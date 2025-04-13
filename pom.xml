@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+         xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>cloud.cleo.clamav.cdk</groupId>
+    <artifactId>cdk</artifactId>
+    <version>1.0</version>
+    <packaging>jar</packaging>
+    <name>Clam AV Serverless CDK Provision</name>
+    <description>Scan S3 Objects with Clam AV</description>
+    
+
+    <organization>
+        <name>CLEO Cloud Solutions</name>
+        <url>https://cleo.cloud</url>
+    </organization>
+    
+    <developers>
+        <developer>
+            <name>Steve Jensen</name>
+            <email>steve@cleo.cloud</email>
+            <organization>CLEO Cloud Solutions</organization>
+            <organizationUrl>https://www.cleo.cloud</organizationUrl>
+        </developer>
+    </developers>
+    
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.release>21</maven.compiler.release>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
+    </properties>
+
+    <build>
+        <plugins>
+            
+            <!-- 👇 Builds the Lambda code BEFORE running CDK -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>3.0.0</version>
+                <executions>
+                    <execution>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <exec executable="mvn">
+                                    <arg value="clean"/>
+                                    <arg value="package"/>
+                                    <arg value="-f"/>
+                                    <arg value="lambda/pom.xml"/>
+                                </exec>
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.5.0</version>
+                <configuration>
+                    <mainClass>cloud.cleo.clamav.cdk.ClamavLambdaStack</mainClass>
+                </configuration>
+            </plugin>
+    
+        </plugins>
+    </build>
+    
+    <dependencies>
+        <!-- AWS Cloud Development Kit -->
+        <dependency>
+            <groupId>software.amazon.awscdk</groupId>
+            <artifactId>aws-cdk-lib</artifactId>
+            <version>2.188.0</version>
+        </dependency>
+
+        <!-- Respective AWS Construct Libraries -->
+        <dependency>
+            <groupId>software.constructs</groupId>
+            <artifactId>constructs</artifactId>
+            <version>10.4.2</version>
+        </dependency>
+        
+        
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>1.18.38</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <version>5.12.1</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <version>5.12.1</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <version>3.27.3</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>

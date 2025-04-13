@@ -1,0 +1,4 @@
+{
+  "app": "mvn --errors --quiet compile exec:java",
+  "context": {}
+}
