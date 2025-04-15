@@ -12,7 +12,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
-import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectTaggingRequest;
@@ -21,10 +20,18 @@ import software.amazon.awssdk.services.s3.model.Tagging;
 
 public class MyLambdaHandler implements RequestHandler<S3EventNotification, Void> {
 
+    /**
+     * When true, only set tagging on object when it is infected.  This makes it easier
+     * to fire a lambda on Tag event to react to infected files.  Otherwise when false
+     * tagging events will fire on all statuses which may be what you want.
+     */
+    final static boolean ONLY_TAG_INFECTED = false;
+
+    // Max size in bytes to process
+    final static int MAX_BYTES = 40000000;
+
     // Create an AWS SDK S3 client (v2).
-    private final S3Client s3Client = S3Client.builder()
-            .credentialsProvider(DefaultCredentialsProvider.create())
-            .build();
+    private final S3Client s3Client = S3Client.create();
 
     // Configure a Log4j2 logger.
     private static final Logger log = LogManager.getLogger(MyLambdaHandler.class);
@@ -61,14 +68,18 @@ public class MyLambdaHandler implements RequestHandler<S3EventNotification, Void
             }
 
             // Run ClamAV (clamscan) on the downloaded file.
-            String status;
-            String output;
+            ScanStatus status;
             try {
                 log.info("Running clamscan on file: {}", localFilePath);
                 ProcessBuilder pb = new ProcessBuilder(
                         "clamscan",
+                        "-v",
                         "--database=/var/task/clamav_defs",
                         "--stdout",
+                        "--max-filesize=" + MAX_BYTES,
+                        "--max-scansize=" + MAX_BYTES,
+                        "-r",
+                        "--tempdir=/tmp",
                         localFilePath
                 );
                 pb.redirectErrorStream(true);
@@ -79,11 +90,11 @@ public class MyLambdaHandler implements RequestHandler<S3EventNotification, Void
                 // According to ClamAV: 0 means CLEAN, 1 means INFECTED, else ERROR.
                 status = switch (exitCode) {
                     case 0 ->
-                        "CLEAN";
+                        ScanStatus.CLEAN;
                     case 1 ->
-                        "INFECTED";
+                        ScanStatus.INFECTED;
                     default ->
-                        "ERROR";
+                        ScanStatus.ERROR;
                 };
                 log.info("Scan result for {}: {}", key, status);
             } catch (IOException | InterruptedException e) {
@@ -97,11 +108,17 @@ public class MyLambdaHandler implements RequestHandler<S3EventNotification, Void
                 }
             }
 
+            if (ONLY_TAG_INFECTED && !ScanStatus.INFECTED.equals(status)) {
+                // Scan it not INFECTED, so do not set tagging 
+                log.debug("Not setting tag on Object because of flag and file is not INFECTED");
+                return;
+            }
+
             // Update the S3 object's tagging with the scan result.
             try {
                 Tag scanTag = Tag.builder()
                         .key("scan-status")
-                        .value(status)
+                        .value(status.toString())
                         .build();
                 Tagging tagging = Tagging.builder()
                         .tagSet(Arrays.asList(scanTag))
@@ -111,6 +128,7 @@ public class MyLambdaHandler implements RequestHandler<S3EventNotification, Void
                         .key(key)
                         .tagging(tagging)
                         .build();
+
                 s3Client.putObjectTagging(putTaggingRequest);
                 log.info("Updated object tags for {} with scan-status: {}", key, status);
             } catch (Exception e) {
@@ -118,5 +136,11 @@ public class MyLambdaHandler implements RequestHandler<S3EventNotification, Void
             }
         });
         return null;
+    }
+
+    private static enum ScanStatus {
+        CLEAN,
+        INFECTED,
+        ERROR
     }
 }
