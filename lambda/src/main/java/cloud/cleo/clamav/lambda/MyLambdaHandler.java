@@ -11,7 +11,6 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectTaggingRequest;
@@ -121,7 +120,7 @@ public class MyLambdaHandler implements RequestHandler<S3EventNotification, Void
                         .value(status.toString())
                         .build();
                 Tagging tagging = Tagging.builder()
-                        .tagSet(Arrays.asList(scanTag))
+                        .tagSet(scanTag)
                         .build();
                 PutObjectTaggingRequest putTaggingRequest = PutObjectTaggingRequest.builder()
                         .bucket(bucket)

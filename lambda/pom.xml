@@ -7,7 +7,7 @@
     <version>1.0</version>
     <packaging>jar</packaging>
     <name>Clam AV Container Lambda</name>
-    <description>Provision Twilio Resouces via CDK</description>
+    <description>Handle S3 Events, tag S3 object with ClamAV scan result</description>
     
 
     <organization>

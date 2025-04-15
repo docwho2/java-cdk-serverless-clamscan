@@ -28,9 +28,6 @@ import software.constructs.Construct;
  */
 public class ClamavLambdaStack extends Stack {
     
-    // Max size in bytes to process
-    final static int MAX_BYTES = 40000000;
-
 
     public ClamavLambdaStack(final Construct scope, final String id, final StackProps props) {
         super(scope, id, props);
