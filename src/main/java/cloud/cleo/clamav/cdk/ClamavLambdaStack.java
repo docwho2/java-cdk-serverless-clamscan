@@ -32,7 +32,7 @@ public class ClamavLambdaStack extends Stack {
 
     public ClamavLambdaStack(final Construct scope, final String id, final StackProps props) {
         super(scope, id, props);
-
+        
         // Retrieve a comma-separated list of bucket names from context.
         // For example: cdk deploy --context bucketNames="bucket1,bucket2,bucket3"
         String bucketNamesContext = (String) this.getNode().tryGetContext("bucketNames");
@@ -83,7 +83,9 @@ public class ClamavLambdaStack extends Stack {
 
     public static void main(final String[] args) {
         App app = new App();
-        new ClamavLambdaStack(app, "ClamavLambdaStack", StackProps.builder().build());
+        new ClamavLambdaStack(app, "ClamavLambdaStack", StackProps.builder()
+                .description("Scan AWS S3 Objects with Clam AV in Lambda based container")
+                .build());
         app.synth();
     }
 }
