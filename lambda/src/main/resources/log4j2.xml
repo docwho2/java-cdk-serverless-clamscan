@@ -1,19 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Configuration status="DEBUG">
+<Configuration>
     <Appenders>
-        <Console name="LambdaConsole" target="SYSTEM_OUT">
-            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - [%X{awsRequestId}] %msg%n"/>
-        </Console>
+        <Lambda name="Lambda" format="${env:AWS_LAMBDA_LOG_FORMAT:-TEXT}">
+            <LambdaTextFormat>
+                <PatternLayout>
+                    <pattern>%d{yyyy-MM-dd HH:mm:ss} %X{AWSRequestId} %-5p %c{1} - %m%n </pattern>
+                </PatternLayout>
+            </LambdaTextFormat>
+            <LambdaJSONFormat>
+                <JsonTemplateLayout eventTemplateUri="classpath:LambdaLayout.json" />
+            </LambdaJSONFormat>
+        </Lambda>
     </Appenders>
     <Loggers>
-      
-        <!-- Limit AWS SDK logging to ERROR level only -->
-        <Logger name="software.amazon.awssdk" level="error" additivity="false">
-            <AppenderRef ref="LambdaConsole"/>
-        </Logger>
-    
-        <Root level="debug">
-            <AppenderRef ref="LambdaConsole"/>
+        <Root level="${env:AWS_LAMBDA_LOG_LEVEL:-DEBUG}">
+            <AppenderRef ref="Lambda"/>
         </Root>
+        <Logger name="software.amazon.awssdk" level="WARN" />
+        <Logger name="software.amazon.awssdk.request" level="WARN" />
     </Loggers>
 </Configuration>
