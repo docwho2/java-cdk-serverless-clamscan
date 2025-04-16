@@ -21,7 +21,7 @@ jobs:
     strategy:
       matrix:
         # deploy various environments
-        environment: [ stage-us-east ]
+        environment: [ stage-us-east, prod-us-east ]
     runs-on: ubuntu-latest
     environment: ${{ matrix.environment }}
     
