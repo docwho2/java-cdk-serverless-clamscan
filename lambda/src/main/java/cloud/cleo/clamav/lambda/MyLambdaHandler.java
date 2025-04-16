@@ -20,9 +20,9 @@ public class MyLambdaHandler implements RequestHandler<S3EventNotification, Void
     /**
      * When true, only set tagging on object when it is infected.  This makes it easier
      * to fire a lambda on Tag event to react to infected files.  Otherwise when false
-     * tagging events will fire on all statuses which may be what you want.
+     * tagging events will fire on all statuses which may not be what you want.
      */
-    final static boolean ONLY_TAG_INFECTED = false;
+    final static boolean ONLY_TAG_INFECTED = true;
 
     // Max size in bytes to process
     final static int MAX_BYTES = 40000000;
