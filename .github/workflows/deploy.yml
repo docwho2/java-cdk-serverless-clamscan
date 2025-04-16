@@ -2,6 +2,9 @@
 name: Deploy CDK Stack
 
 on:
+  schedule:
+    - cron: '0 10 * * 1'  # Run Every Monday at 10:00 UTC
+  workflow_dispatch:  # Optional: allow manual trigger too
   push:
     branches: [ "main" ]
     paths-ignore:
