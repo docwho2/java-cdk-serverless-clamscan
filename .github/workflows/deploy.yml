@@ -1,0 +1,62 @@
+
+name: Deploy CDK Stack
+
+on:
+  push:
+    branches: [ "main" ]
+    paths-ignore:
+      - '**.png'
+      - '**.md'
+      - '**.sh'
+
+    
+permissions:
+  id-token: write # This is required for requesting the JWT
+  contents: read  # This is required for actions/checkout
+
+concurrency: deploy
+
+jobs:
+  deploy:
+    strategy:
+      matrix:
+        # deploy various environments
+        environment: [ stage-us-east ]
+    runs-on: ubuntu-latest
+    environment: ${{ matrix.environment }}
+    
+      
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+    
+    - name: Set up JDK 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'corretto'
+        cache: maven
+    
+    - name: Install AWS CDK
+      run: |
+        npm install -g aws-cdk
+        echo "Node Version: $(node -v)"
+        echo "CDK Version: $(cdk version)"
+    
+    - name: Setup AWS Credentials
+      id: aws-creds
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-region: ${{ vars.REGION }}
+        role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+        mask-aws-account-id: true
+    
+    - name: Add AWS_ACCOUNT_ID to Environment
+      run: echo "AWS_ACCOUNT_ID=${{ steps.aws-creds.outputs.aws-account-id }}" >> $GITHUB_ENV
+    
+    - name: Ensure CDK is bootstraped and up to date
+      run: cdk bootstrap --ci=true -c accountId=${AWS_ACCOUNT_ID} aws://${AWS_ACCOUNT_ID}/${{ vars.REGION }}
+    
+    - name: Deploy CDK Stack
+      run: cdk deploy --require-approval=never --ci=true --context bucketNames="${{ vars.S3_BUCKET_NAMES }}"
+      
