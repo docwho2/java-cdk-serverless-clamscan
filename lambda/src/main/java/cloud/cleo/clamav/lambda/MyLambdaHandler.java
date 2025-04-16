@@ -7,8 +7,6 @@ import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.models.s3.S3EventNotification;
 import java.io.File;
 import java.io.IOException;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -40,9 +38,7 @@ public class MyLambdaHandler implements RequestHandler<S3EventNotification, Void
 
         event.getRecords().forEach(record -> {
             String bucket = record.getS3().getBucket().getName();
-            String encodedKey = record.getS3().getObject().getKey();
-            // URL-decode the key to correctly handle special characters
-            String key = URLDecoder.decode(encodedKey, StandardCharsets.UTF_8);
+            String key = record.getS3().getObject().getUrlDecodedKey();
 
             log.info("Processing file from bucket: {}, key: {}", bucket, key);
 
