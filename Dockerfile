@@ -4,17 +4,10 @@ FROM --platform=linux/arm64 ubuntu:20.04 AS builder
 # Prevent interactive prompts.
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update -y \
-    && apt-get install -y clamav clamav-freshclam p7zip-full \
-    && apt-get clean
+RUN apt-get update -y && \
+    apt-get install -y clamav clamav-freshclam p7zip-full
 
-# Create a directory for the definitions and run freshclam to update them.
-RUN mkdir -p /tmp/clamav_defs && \
-    chmod -R 777 /tmp/clamav_defs && \
-    freshclam --stdout --datadir=/tmp/clamav_defs && \
-    cp -R /tmp/clamav_defs /tmp/clamav_defs_output
-
-# Copy Clamscn
+# Copy Clamscan
 RUN cp /usr/bin/clamscan /tmp/
 
 # Builder stage: copy all required shared libraries into /tmp/clamav_libs
@@ -32,9 +25,14 @@ RUN mkdir -p /tmp/clamav_libs && \
     cp /lib/aarch64-linux-gnu/liblzma.so.* /tmp/clamav_libs/
 
 
+# Create a directory for the definitions and run freshclam to update them.
+RUN mkdir -p /tmp/clamav_defs && \
+    chmod -R 777 /tmp/clamav_defs && \
+    freshclam --stdout --datadir=/tmp/clamav_defs && \
+    cp -R /tmp/clamav_defs /tmp/clamav_defs_output
+
 # Final stage: use the AWS Lambda Java 21 base image.
 FROM --platform=linux/arm64 public.ecr.aws/lambda/java:21 AS final
-
 
 # Copy the ClamAV executable from the builder stage.
 COPY --from=builder /tmp/clamscan /usr/bin/clamscan
