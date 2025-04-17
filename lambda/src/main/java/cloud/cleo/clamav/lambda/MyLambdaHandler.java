@@ -18,14 +18,18 @@ import software.amazon.awssdk.services.s3.model.Tagging;
 public class MyLambdaHandler implements RequestHandler<S3EventNotification, Void> {
 
     /**
-     * When true, only set tagging on object when it is infected.  This makes it easier
-     * to fire a lambda on Tag event to react to infected files.  Otherwise when false
-     * tagging events will fire on all statuses which may not be what you want.
+     * When true, only set tagging on object when it is infected. This makes it
+     * easier to fire a lambda on Tag event to react to infected files.
+     * Otherwise when false tagging events will fire on all statuses which may
+     * not be what you want.
      */
     final static boolean ONLY_TAG_INFECTED = true;
 
-    // Max size in bytes to process
-    final static int MAX_BYTES = 40000000;
+    // Max size in bytes to process (100MB is safe given 512MB /tmp in Lambda)
+    final static int MAX_BYTES = 100000000;
+    
+    // Tag Name
+    final static String SCAN_TAG_NAME = "scan-status";
 
     // Create an AWS SDK S3 client (v2).
     private final S3Client s3Client = S3Client.create();
@@ -44,6 +48,19 @@ public class MyLambdaHandler implements RequestHandler<S3EventNotification, Void
 
             if (bucket == null || bucket.isEmpty() || key == null || key.isEmpty()) {
                 log.error("Invalid S3 event: bucket and key must be provided");
+                return;
+            }
+
+            // Check file size before downloading
+            try {
+                long size = s3Client.headObject(b -> b.bucket(bucket).key(key)).contentLength();
+                if (size > MAX_BYTES) {
+                    log.warn("Skipping file {} due to size ({} bytes) exceeding max of {} bytes", key, size, MAX_BYTES);
+                    setScanTagStatus(bucket, key, ScanStatus.FILE_SIZE_EXCEEED);
+                    return;
+                }
+            } catch (Exception e) {
+                log.error("Failed to get object metadata for key {}: {}", key, e.getMessage());
                 return;
             }
 
@@ -110,32 +127,49 @@ public class MyLambdaHandler implements RequestHandler<S3EventNotification, Void
             }
 
             // Update the S3 object's tagging with the scan result.
-            try {
-                Tag scanTag = Tag.builder()
-                        .key("scan-status")
-                        .value(status.toString())
-                        .build();
-                Tagging tagging = Tagging.builder()
-                        .tagSet(scanTag)
-                        .build();
-                PutObjectTaggingRequest putTaggingRequest = PutObjectTaggingRequest.builder()
-                        .bucket(bucket)
-                        .key(key)
-                        .tagging(tagging)
-                        .build();
+            setScanTagStatus(bucket, key, status);
 
-                s3Client.putObjectTagging(putTaggingRequest);
-                log.info("Updated object tags for {} with scan-status: {}", key, status);
-            } catch (Exception e) {
-                log.error("Error updating object tags for {}: {}", key, e.getMessage());
-            }
         });
         return null;
     }
 
+    /**
+     * Add Scan Status tag to S3 Object.
+     * 
+     * @param bucket
+     * @param key
+     * @param status 
+     */
+    private void setScanTagStatus(String bucket, String key, ScanStatus status) {
+
+        try {
+            Tag scanTag = Tag.builder()
+                    .key(SCAN_TAG_NAME)
+                    .value(status.toString())
+                    .build();
+            Tagging tagging = Tagging.builder()
+                    .tagSet(scanTag)
+                    .build();
+            PutObjectTaggingRequest putTaggingRequest = PutObjectTaggingRequest.builder()
+                    .bucket(bucket)
+                    .key(key)
+                    .tagging(tagging)
+                    .build();
+
+            s3Client.putObjectTagging(putTaggingRequest);
+            log.info("Updated object tags for {} with scan-status: {}", key, status);
+        } catch (Exception e) {
+            log.error("Error updating object tags for {}: {}", key, e.getMessage());
+        }
+    }
+
+    /**
+     * Possible Statuses that can be applied for a scan.
+     */
     private static enum ScanStatus {
         CLEAN,
         INFECTED,
+        FILE_SIZE_EXCEEED,
         ERROR
     }
 }
