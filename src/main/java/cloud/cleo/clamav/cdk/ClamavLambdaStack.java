@@ -1,13 +1,10 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package cloud.cleo.clamav.cdk;
 
 import java.util.ArrayList;
 import java.util.List;
 import software.amazon.awscdk.App;
 import software.amazon.awscdk.Duration;
+import software.amazon.awscdk.Size;
 import software.amazon.awscdk.Stack;
 import software.amazon.awscdk.StackProps;
 import software.amazon.awscdk.services.ecr.assets.DockerImageAsset;
@@ -23,15 +20,15 @@ import software.amazon.awscdk.services.s3.notifications.LambdaDestination;
 import software.constructs.Construct;
 
 /**
+ * CDK Stack to deploy Clam AV Container image and set permissions on S3 Buckets that will be scanned.
  *
  * @author sjensen
  */
 public class ClamavLambdaStack extends Stack {
-    
 
     public ClamavLambdaStack(final Construct scope, final String id, final StackProps props) {
         super(scope, id, props);
-        
+
         // Retrieve a comma-separated list of bucket names from context.
         // For example: cdk deploy --context bucketNames="bucket1,bucket2,bucket3"
         String bucketNamesContext = (String) this.getNode().tryGetContext("bucketNames");
@@ -53,23 +50,35 @@ public class ClamavLambdaStack extends Stack {
         // then copies the produced JAR into the asset output so that the Dockerfile COPY
         // instruction (which expects target/lambda.jar) works properly.
         DockerImageAsset imageAsset = DockerImageAsset.Builder.create(this, "ClamavLambdaImage")
-                .directory(".")  // Dockerfile is in the top level repo directory
+                .directory(".") // Dockerfile is in the top level repo directory
                 .build();
 
         // Create a Docker-based Lambda function using the built image.
         DockerImageFunction lambdaFunction = DockerImageFunction.Builder.create(this, "ClamavLambdaFunction")
                 .code(DockerImageCode.fromEcr(imageAsset.getRepository(),
                         EcrImageCodeProps.builder().tagOrDigest(imageAsset.getImageTag()).build()))
+                //
+                // We use ARM because its cheaper for CPU bound executions like CLamAV scanning
                 .architecture(Architecture.ARM_64)
-                .functionName("ClamavLambdaFunction")
+                //
+                // This seems fine for scanning 100MB files or less.  Increasing will not yield much faster scans, jut cost you more
+                // 3009 gives you 3 VCPU vs <3009 which drops you to 2 VCPU
                 .memorySize(3009)
+                //
+                // Default is 512MB, but can be increased to support larger file sizes for scanning
+                // NOTE: increasing this will incur additional costs
+                .ephemeralStorageSize(Size.mebibytes(512))
+                //
+                // Scans should complete within a minute, so 10 mins is pretty conservative to allow scan to complete
                 .timeout(Duration.minutes(10))
-                .logRetention(RetentionDays.ONE_MONTH)
+                .functionName("ClamavLambdaFunction")
+                .description("Scans S3 files based on ObjectCreate events")
+                .logRetention(RetentionDays.ONE_MONTH)  // Don't let the logs hang around forever
                 .build();
 
         // For each bucket passed via CLI:
         for (IBucket bucket : buckets) {
-            // Grant read permissions (to download objects).
+            // Grant read permissions (to download objects into /tmp to perform scans).
             bucket.grantRead(lambdaFunction);
 
             // Grant permission to update object tags for the scan result.
@@ -80,6 +89,11 @@ public class ClamavLambdaStack extends Stack {
         }
     }
 
+    /**
+     * Entry point for CDK.
+     * 
+     * @param args 
+     */
     public static void main(final String[] args) {
         App app = new App();
         new ClamavLambdaStack(app, "ClamavLambdaStack", StackProps.builder()

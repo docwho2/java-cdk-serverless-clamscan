@@ -9,37 +9,45 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import software.amazon.awssdk.services.s3.S3Client;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectTaggingRequest;
+import software.amazon.awssdk.services.s3.model.PutObjectTaggingResponse;
 import software.amazon.awssdk.services.s3.model.Tag;
 import software.amazon.awssdk.services.s3.model.Tagging;
 
-public class MyLambdaHandler implements RequestHandler<S3EventNotification, Void> {
+/**
+ * Consume S3 Object create event and then scan Object and set Tag with result.
+ * 
+ * @author sjensen
+ */
+public class ScanningLambda implements RequestHandler<S3EventNotification, Void> {
 
     /**
-     * When true, only set tagging on object when it is infected. This makes it
-     * easier to fire a lambda on Tag event to react to infected files.
-     * Otherwise when false tagging events will fire on all statuses which may
-     * not be what you want.
+     * When true, only set tagging on object when it is infected. This makes it easier to fire a lambda on Tag event to
+     * react to infected files. Otherwise when false tagging events will fire on all statuses which may not be what you
+     * want.  If you want to deny access via bucket policy while scanning, then this will need to be false.
      */
     final static boolean ONLY_TAG_INFECTED = true;
 
     // Max size in bytes to process (100MB is safe given 512MB /tmp in Lambda)
     final static int MAX_BYTES = 100000000;
-    
-    // Tag Name
+
+    // Tag Name to use for scanning
     final static String SCAN_TAG_NAME = "scan-status";
 
-    // Create an AWS SDK S3 client (v2).
-    private final S3Client s3Client = S3Client.create();
+    // Create an S3 client with CRT Async (better download performance and Async calls)
+    final static S3AsyncClient s3Client = S3AsyncClient.crtCreate();
 
     // Configure a Log4j2 logger.
-    private static final Logger log = LogManager.getLogger(MyLambdaHandler.class);
+    final static Logger log = LogManager.getLogger(ScanningLambda.class);
 
     @Override
     public Void handleRequest(S3EventNotification event, Context context) {
-
+        // There will only ever be one record
         event.getRecords().forEach(record -> {
             String bucket = record.getS3().getBucket().getName();
             String key = record.getS3().getObject().getUrlDecodedKey();
@@ -53,10 +61,10 @@ public class MyLambdaHandler implements RequestHandler<S3EventNotification, Void
 
             // Check file size before downloading
             try {
-                long size = s3Client.headObject(b -> b.bucket(bucket).key(key)).contentLength();
+                long size = s3Client.headObject(b -> b.bucket(bucket).key(key)).join().contentLength();
                 if (size > MAX_BYTES) {
                     log.warn("Skipping file {} due to size ({} bytes) exceeding max of {} bytes", key, size, MAX_BYTES);
-                    setScanTagStatus(bucket, key, ScanStatus.FILE_SIZE_EXCEEED);
+                    setScanTagStatus(bucket, key, ScanStatus.FILE_SIZE_EXCEEED).join();
                     return;
                 }
             } catch (Exception e) {
@@ -64,16 +72,21 @@ public class MyLambdaHandler implements RequestHandler<S3EventNotification, Void
                 return;
             }
 
-            // Download the file to /tmp.
-            String fileName = new File(key).getName();
-            String localFilePath = "/tmp/" + fileName;
+            if (!ONLY_TAG_INFECTED) {
+                // Set the status to scanning immediately, so download can be denied via policy if desired
+                setScanTagStatus(bucket, key, ScanStatus.SCANNING); // Don't wait for Async response
+            }
+
+            // Download the file to /tmp. Cleanup key if it has many / characters and yield filename only
+            Path localFilePath = Path.of("/tmp",new File(key).getName());
             try {
                 log.info("Downloading file {} from bucket {} to {}", key, bucket, localFilePath);
                 GetObjectRequest getObjectRequest = GetObjectRequest.builder()
                         .bucket(bucket)
                         .key(key)
                         .build();
-                s3Client.getObject(getObjectRequest, Path.of(localFilePath));
+                s3Client.getObject(getObjectRequest, localFilePath)
+                        .join(); // Wait for completion before proceeding
             } catch (Exception e) {
                 log.error("Error downloading file: {}", e.getMessage());
                 return;
@@ -92,7 +105,7 @@ public class MyLambdaHandler implements RequestHandler<S3EventNotification, Void
                         "--max-scansize=" + MAX_BYTES,
                         "-r",
                         "--tempdir=/tmp",
-                        localFilePath
+                        localFilePath.toString()
                 );
                 pb.redirectErrorStream(true);
                 Process process = pb.start();
@@ -114,41 +127,56 @@ public class MyLambdaHandler implements RequestHandler<S3EventNotification, Void
                 return;
             } finally {
                 try {
-                    Files.deleteIfExists(Path.of(localFilePath));
+                    Files.deleteIfExists(localFilePath);
                 } catch (IOException e) {
                     log.warn("Warning: Could not delete local file {}: {}", localFilePath, e.getMessage());
                 }
             }
 
             if (ONLY_TAG_INFECTED && !ScanStatus.INFECTED.equals(status)) {
-                // Scan it not INFECTED, so do not set tagging 
+                // Scan is not INFECTED, so do not set tagging 
                 log.debug("Not setting tag on Object because of flag and file is not INFECTED");
                 return;
             }
 
             // Update the S3 object's tagging with the scan result.
-            setScanTagStatus(bucket, key, status);
+            setScanTagStatus(bucket, key, status).join(); // Wait for result before exiting
 
         });
         return null;
     }
 
     /**
-     * Add Scan Status tag to S3 Object.
-     * 
+     * Add/Update Scan Status tag to S3 Object. This method preserves any other tags that may be on the Object.
+     *
      * @param bucket
      * @param key
-     * @param status 
+     * @param status
      */
-    private void setScanTagStatus(String bucket, String key, ScanStatus status) {
-
+    private  CompletableFuture<PutObjectTaggingResponse> setScanTagStatus(String bucket, String key, ScanStatus status) {
         try {
-            Tag scanTag = Tag.builder()
+            // Get current tags
+            List<Tag> existingTags = s3Client.getObjectTagging(b -> b.bucket(bucket).key(key))
+                    .join() // Get result now since we need in order to put all tags
+                    .tagSet();
+
+            // Remove any existing "scan-status" tag
+            List<Tag> updatedTags = new ArrayList<>();
+            for (Tag tag : existingTags) {
+                if (!tag.key().equals(SCAN_TAG_NAME)) {
+                    updatedTags.add(tag);
+                }
+            }
+
+            // Add updated scan-status tag
+            updatedTags.add(Tag.builder()
                     .key(SCAN_TAG_NAME)
                     .value(status.toString())
-                    .build();
+                    .build());
+
+            // Put updated tag set
             Tagging tagging = Tagging.builder()
-                    .tagSet(scanTag)
+                    .tagSet(updatedTags)
                     .build();
             PutObjectTaggingRequest putTaggingRequest = PutObjectTaggingRequest.builder()
                     .bucket(bucket)
@@ -156,20 +184,38 @@ public class MyLambdaHandler implements RequestHandler<S3EventNotification, Void
                     .tagging(tagging)
                     .build();
 
-            s3Client.putObjectTagging(putTaggingRequest);
+            
             log.info("Updated object tags for {} with scan-status: {}", key, status);
+            return s3Client.putObjectTagging(putTaggingRequest);
         } catch (Exception e) {
             log.error("Error updating object tags for {}: {}", key, e.getMessage());
+            return CompletableFuture.failedFuture(e);
         }
     }
 
     /**
-     * Possible Statuses that can be applied for a scan.
+     * Possible Statuses that can be applied for a scan for tagging.
      */
-    private static enum ScanStatus {
+    public static enum ScanStatus {
+        /**
+         * Scan was completed and found to be clean.
+         */
         CLEAN,
+        /**
+         * Scan was completed and found to be infected.
+         */
         INFECTED,
+        /**
+         * Scan aborted because file size is too big to scan.
+         */
         FILE_SIZE_EXCEEED,
+        /**
+         * Scanning is in progress.
+         */
+        SCANNING,
+        /**
+         * An error occurred during the scanning progress.
+         */
         ERROR
     }
 }

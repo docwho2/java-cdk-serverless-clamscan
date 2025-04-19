@@ -50,5 +50,5 @@ ENV LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/usr/lib/clamav_libs"
 COPY lambda/target/lambda.jar ${LAMBDA_TASK_ROOT}/lib/
 
 # Specify the Lambda handler (in the format Package.Class::method).
-CMD [ "cloud.cleo.clamav.lambda.MyLambdaHandler::handleRequest" ]
+CMD [ "cloud.cleo.clamav.lambda.ScanningLambda::handleRequest" ]
 
