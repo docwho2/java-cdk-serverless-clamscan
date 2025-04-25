@@ -1,4 +1,4 @@
-# Lambda: ClamAV Virus Scanning Function (Java 21 + CRT + Async S3)
+# Lambda: ClamAV Virus Scanning Function
 
 This module contains the AWS Lambda implementation for scanning S3 objects for viruses using **ClamAV**. Built with **Java 21**, this high-performance, serverless function uses a **container-based deployment** and leverages the **AWS SDK v2 Async Client with CRT (Common Runtime)** for optimal performance.
 
@@ -32,14 +32,6 @@ This module contains the AWS Lambda implementation for scanning S3 objects for v
 - CRT-backed async client reduces memory footprint and CPU usage
 - ARM64 base image improves cold start performance up to **30%**
 - Designed to scale horizontally across parallel S3 triggers
-
----
-
-## 🧪 Testing & Maintenance
-
-- Create small test files (10–50KB) and large files (up to 100MB) for validation
-- ClamAV definitions are bundled during image build via `freshclam`
-- Integration tests live in the `integration-test/` module
 
 ---
 
