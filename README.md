@@ -11,7 +11,7 @@ The inspiration for this project came from reviewing the [AWS Labs cdk-serverles
 | AWS Labs Solution                                  | This Project                                                  |
 |----------------------------------------------------|---------------------------------------------------------------|
 | Projen + Typescript + Python + Node.js + Lambda    | ✅ Pure Java (Java 21) for both Lambda and CDK                |
-| ClamAV DB stored in S3 + loaded at runtime         | ✅ ClamAV DB bundled in Docker image at build time            |
+| ClamAV DB stored in S3 + loaded at runtime, VPC, EFS         | ✅ ClamAV DB bundled in Docker image at build time            |
 | Multiple constructs and wiring layers              | ✅ Single CDK stack, minimal moving parts                     |
 | Manual or external event setup                     | ✅ Dynamically configures bucket notifications + permissions  |
 | No GitHub automation baked in                      | ✅ Includes full GitHub Actions CI/CD workflow                |
@@ -26,7 +26,7 @@ The inspiration for this project came from reviewing the [AWS Labs cdk-serverles
 ## 🚀 What It Does
 
 - Scans uploaded S3 objects for viruses using **ClamAV**
-- Tags infected/clean files with a `clamav-status` object tag
+- Tags infected/clean files with a `scan-status` object tag
 - Uses **Java 21**, optimized with **AWS SDK v2 + CRT-based async S3 client**
 - Deploys via **container-based AWS Lambda** using **ARM64** for speed and cost efficiency
 - Dynamically wires up **any bucket(s)** via CDK to trigger scan and applies needed IAM permissions
@@ -58,15 +58,15 @@ The inspiration for this project came from reviewing the [AWS Labs cdk-serverles
 
 - Uses **ARM64** Lambda base image for faster cold starts and lower runtime cost
 - **ClamAV definitions** are embedded at Docker build time — no S3 download needed at runtime
-- **Only tags infected files by default** (configurable via env var)
-- **No public internet required** for virus definitions or dependency download at runtime
+- **Only tags infected files by default** (configurable via static boolean)
+- **No public internet required** for virus definitions or dependency download at runtime and no VPC necessary
 
 ---
 
 ## 🚀 Build & Deploy
 
 ```bash
-# Build the JAR and copy to Docker context
+# Build the Project and copy to Docker context
 mvn package
 
 # CDK synth + deploy (Java-based)
@@ -82,9 +82,3 @@ cdk deploy
 - Use **modern Java everywhere**
 - Make it **fast**, **cheap**, and **maintainable**
 - Minimize dependencies and runtime configuration
-
----
-
-## 🙌 Contributing
-
-This project welcomes PRs, feedback, and ideas — especially from teams looking to adopt ClamAV scanning in a Java-native way.

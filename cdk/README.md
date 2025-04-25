@@ -8,7 +8,7 @@ This module defines and deploys the AWS infrastructure that powers the ClamAV vi
 
 - **Deploys a container-based Lambda function** that scans S3 uploads for viruses using ClamAV.
 - **Sets up an S3 event trigger** so new files automatically invoke the scanner.
-- **Tags each file** with a `clamav-status` tag (`OK` or `INFECTED`) after scanning.
+- **Tags each file** with a `scan-status` tag (`CLEAN` or `INFECTED`) after scanning (depending on config)
 
 ---
 
@@ -27,11 +27,6 @@ This module defines and deploys the AWS infrastructure that powers the ClamAV vi
 - The Lambda project builds `lambda-1.0.jar` and copies it into this module under `lambda-jar/`.
 - Docker uses this copied JAR when building the container.
 
-```bash
-cd lambda && mvn package
-# outputs to cdk/lambda-jar/lambda-1.0.jar
-```
-
 ---
 
 ## 🧱 Stack Resources
@@ -49,16 +44,6 @@ cd lambda && mvn package
 - **Docker (multi-stage build)**
 - **ARM64 container image**
 - **ClamAV (Ubuntu-based)**
-
----
-
-## 🧼 Cleanup
-
-The Maven `clean` goal removes `lambda-jar/` to keep the repo clean:
-
-```bash
-cd cdk && mvn clean
-```
 
 ---
 

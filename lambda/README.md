@@ -10,10 +10,9 @@ This module contains the AWS Lambda implementation for scanning S3 objects for v
 - 🔬 **ClamAV** integration (with up-to-date virus definitions)
 - ☁️ **Asynchronous S3 interactions** via `S3AsyncClient` + CRT (zero-copy, event-driven I/O)
 - 🐳 **Container-based Lambda deployment** using ARM64 base image (faster cold starts, lower cost)
-- 🧠 **Smart object tagging**: adds `clamav-status` metadata (`INFECTED` / `OK`) after scan
+- 🧠 **Smart object tagging**: adds `scan-status` tag (`INFECTED` / `CLEAN`) after scan (depending on config)
 - ⚡ **Parallel processing**: Uses `CompletableFuture` for high concurrency
 - 🧼 **/tmp-safe**: Streams S3 content directly to `/tmp`, deletes after scan
-- 🔒 No sensitive info logged; logs include scan result and file key only
 
 ---
 
@@ -24,14 +23,6 @@ This module contains the AWS Lambda implementation for scanning S3 objects for v
 3. **Executes `clamscan`** in a native container image with preloaded virus definitions
 4. **Parses output** to detect infection
 5. **Tags file** in-place with `clamav-status=OK` or `INFECTED`
-
----
-
-## 📈 Performance Highlights
-
-- CRT-backed async client reduces memory footprint and CPU usage
-- ARM64 base image improves cold start performance up to **30%**
-- Designed to scale horizontally across parallel S3 triggers
 
 ---
 
