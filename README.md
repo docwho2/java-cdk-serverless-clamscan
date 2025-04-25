@@ -8,13 +8,15 @@ A streamlined, Java-powered solution for scanning files uploaded to Amazon S3 us
 
 The inspiration for this project came from reviewing the [AWS Labs cdk-serverless-clamscan](https://github.com/awslabs/cdk-serverless-clamscan) repository. While that solution is powerful and flexible, it also comes with significant complexity:
 
-| AWS Labs Solution                                  | This Project                                            |
-|----------------------------------------------------|---------------------------------------------------------|
-| Projen + Typescript + Python + Node.js + Lambda    | ✅ Pure Java (Java 21) for both Lambda and CDK          |
-| ClamAV DB stored in S3 + loaded at runtime         | ✅ ClamAV DB bundled in Docker image at build time      |
-| Multiple constructs and wiring layers              | ✅ Single CDK stack, minimal moving parts               |
-| Multiple language bindings (JSII)                  | ✅ Simple Java Maven modules, fast to understand & run  |
-| EventBridge + SNS integration baked in             | ✅ Focused S3 trigger → Lambda tagging flow             |
+| AWS Labs Solution                                  | This Project                                                  |
+|----------------------------------------------------|---------------------------------------------------------------|
+| Projen + Typescript + Python + Node.js + Lambda    | ✅ Pure Java (Java 21) for both Lambda and CDK                |
+| ClamAV DB stored in S3 + loaded at runtime         | ✅ ClamAV DB bundled in Docker image at build time            |
+| Multiple constructs and wiring layers              | ✅ Single CDK stack, minimal moving parts                     |
+| Manual or external event setup                     | ✅ Dynamically configures bucket notifications + permissions  |
+| No GitHub automation baked in                      | ✅ Includes full GitHub Actions CI/CD workflow                |
+| Multiple language bindings (JSII)                  | ✅ Simple Java Maven modules, fast to understand & run        |
+| EventBridge + SNS integration baked in             | ✅ Focused S3 trigger → Lambda tagging flow                   |
 
 > This repo exists because not every virus scan pipeline needs an entire JSII-powered TypeScript library.  
 > Sometimes, you just need **high-performance, maintainable infrastructure** in a language your backend team already uses.
@@ -27,6 +29,7 @@ The inspiration for this project came from reviewing the [AWS Labs cdk-serverles
 - Tags infected/clean files with a `clamav-status` object tag
 - Uses **Java 21**, optimized with **AWS SDK v2 + CRT-based async S3 client**
 - Deploys via **container-based AWS Lambda** using **ARM64** for speed and cost efficiency
+- Dynamically wires up **any bucket(s)** via CDK to trigger scan and applies needed IAM permissions
 
 ---
 
@@ -37,6 +40,7 @@ The inspiration for this project came from reviewing the [AWS Labs cdk-serverles
 - **CDK (Java)** — type-safe infrastructure-as-code
 - **Docker** — multi-stage image with ClamAV + latest definitions
 - **Lambda** — serverless + scalable compute
+- **GitHub Actions** — automated CI/CD pipeline ready to go
 
 ---
 
@@ -58,3 +62,29 @@ The inspiration for this project came from reviewing the [AWS Labs cdk-serverles
 - **No public internet required** for virus definitions or dependency download at runtime
 
 ---
+
+## 🚀 Build & Deploy
+
+```bash
+# Build the JAR and copy to Docker context
+mvn package
+
+# CDK synth + deploy (Java-based)
+cd cdk
+cdk deploy
+```
+
+---
+
+## 📌 Goals
+
+- Keep it **easy to understand**
+- Use **modern Java everywhere**
+- Make it **fast**, **cheap**, and **maintainable**
+- Minimize dependencies and runtime configuration
+
+---
+
+## 🙌 Contributing
+
+This project welcomes PRs, feedback, and ideas — especially from teams looking to adopt ClamAV scanning in a Java-native way.
