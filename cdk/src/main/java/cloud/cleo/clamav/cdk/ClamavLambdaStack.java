@@ -50,7 +50,7 @@ public class ClamavLambdaStack extends Stack {
         // then copies the produced JAR into the asset output so that the Dockerfile COPY
         // instruction (which expects target/lambda.jar) works properly.
         DockerImageAsset imageAsset = DockerImageAsset.Builder.create(this, "ClamavLambdaImage")
-                .directory(".") // Dockerfile is in the top level repo directory
+                .directory(".") 
                 .build();
 
         // Create a Docker-based Lambda function using the built image.

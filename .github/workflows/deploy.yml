@@ -74,9 +74,16 @@ jobs:
     - name: Add AWS_ACCOUNT_ID to Environment
       run: echo "AWS_ACCOUNT_ID=${{ steps.aws-creds.outputs.aws-account-id }}" >> $GITHUB_ENV
     
+    - name: Build top level project which will have lambda jar ready for CDK build
+      run: > 
+        mvn package -DskipTests
+        --no-transfer-progress --quiet
+    
     - name: Ensure CDK is bootstraped and up to date
+      working-directory: ./cdk
       run: cdk bootstrap --ci=true -c accountId=${AWS_ACCOUNT_ID} aws://${AWS_ACCOUNT_ID}/${{ vars.REGION }}
     
     - name: Deploy CDK Stack
+      working-directory: ./cdk
       run: cdk deploy --require-approval=never --ci=true --context bucketNames="${{ vars.S3_BUCKET_NAMES }}"
       

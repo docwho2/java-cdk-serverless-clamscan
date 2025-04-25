@@ -1,5 +1,5 @@
 .classpath.txt
-target
+**/target/
 .classpath
 .project
 .idea
@@ -9,6 +9,7 @@ target
 nb-configuration.xml
 
 # CDK asset staging directory
-.cdk.staging
-cdk.out
+cdk/.cdk.staging
+cdk/cdk.out
+cdk/lambda-jar/
 

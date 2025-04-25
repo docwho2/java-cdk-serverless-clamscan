@@ -47,7 +47,7 @@ COPY --from=builder /tmp/clamav_libs /usr/lib/clamav_libs
 ENV LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/usr/lib/clamav_libs"
 
 # Copy Lambda function JAR into the image.
-COPY lambda/target/lambda.jar ${LAMBDA_TASK_ROOT}/lib/
+COPY lambda-jar/lambda-1.0.jar ${LAMBDA_TASK_ROOT}/lib/
 
 # Specify the Lambda handler (in the format Package.Class::method).
 CMD [ "cloud.cleo.clamav.lambda.ScanningLambda::handleRequest" ]
