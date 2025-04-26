@@ -10,13 +10,19 @@
     <description>Test ClamAV continaer and ensure it tags files</description>
     
 
-     <parent>
+    <parent>
         <groupId>cloud.cleo.clamav</groupId>
         <artifactId>parent-pom</artifactId>
         <version>1.0</version>
     </parent>
     
     <dependencies>
+        
+        <dependency>
+            <groupId>cloud.cleo.clamav</groupId>
+            <artifactId>shared-model</artifactId>
+            <version>1.0</version>
+        </dependency>
         
         
         <dependency>

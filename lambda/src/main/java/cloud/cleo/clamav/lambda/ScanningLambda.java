@@ -1,5 +1,7 @@
 package cloud.cleo.clamav.lambda;
 
+import cloud.cleo.clamav.ScanStatus;
+import static cloud.cleo.clamav.ScanStatus.SCAN_TAG_NAME;
 import com.amazonaws.services.lambda.runtime.Context;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -36,9 +38,6 @@ public class ScanningLambda implements RequestHandler<S3EventNotification, Void>
 
     // Max size in bytes to process (100MB is safe given 512MB /tmp in Lambda)
     final static int MAX_BYTES = 100000000;
-
-    // Tag Name to use for scanning
-    final static String SCAN_TAG_NAME = "scan-status";
 
     // Create an S3 client with CRT Async (better download performance and Async calls)
     final static S3AsyncClient s3Client = S3AsyncClient.crtCreate();
@@ -208,31 +207,5 @@ public class ScanningLambda implements RequestHandler<S3EventNotification, Void>
             log.error("Error updating object tags", e);
             return CompletableFuture.failedFuture(e);
         }
-    }
-
-    /**
-     * Possible Statuses that can be applied for a scan for tagging.
-     */
-    public static enum ScanStatus {
-        /**
-         * Scan was completed and found to be clean.
-         */
-        CLEAN,
-        /**
-         * Scan was completed and found to be infected.
-         */
-        INFECTED,
-        /**
-         * Scan aborted because file size is too big to scan.
-         */
-        FILE_SIZE_EXCEEED,
-        /**
-         * Scanning is in progress.
-         */
-        SCANNING,
-        /**
-         * An error occurred during the scanning progress.
-         */
-        ERROR
     }
 }

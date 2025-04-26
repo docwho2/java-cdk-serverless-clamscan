@@ -1,5 +1,7 @@
 package cloud.cleo.clamav.test;
 
+import cloud.cleo.clamav.ScanStatus;
+import static cloud.cleo.clamav.ScanStatus.SCAN_TAG_NAME;
 import java.io.PrintWriter;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeAll;
@@ -23,7 +25,7 @@ public class VirusScanValidationTest {
     private static final String BUCKET_NAME = System.getenv("VALIDATION_BUCKET");
     private static final String INFECTED_KEY = "eicar.txt";
     private static final String OVERSIZED_KEY = "large-test-file.zip";
-    private static final String SCAN_TAG_NAME = "scan-status";
+    
 
     private static final S3Client s3 = S3Client.create();
 
@@ -38,7 +40,7 @@ public class VirusScanValidationTest {
     public void validateScanOfKnownInfectedFile() throws InterruptedException {
         try {
             retriggerScan(INFECTED_KEY);
-            waitForTagValue(INFECTED_KEY, "INFECTED");
+            waitForTagValue(INFECTED_KEY, ScanStatus.INFECTED);
         } finally {
             clearTags(INFECTED_KEY);
         }
@@ -48,7 +50,7 @@ public class VirusScanValidationTest {
     public void validateScanOfOversizedFile() throws InterruptedException {
         try {
             retriggerScan(OVERSIZED_KEY);
-            waitForTagValue(OVERSIZED_KEY, "FILE_SIZE_EXCEEED");
+            waitForTagValue(OVERSIZED_KEY, ScanStatus.FILE_SIZE_EXCEEED);
         } finally {
             clearTags(OVERSIZED_KEY);
         }
@@ -61,7 +63,7 @@ public class VirusScanValidationTest {
         }
     }
 
-    private void waitForTagValue(String key, String expectedValue) throws InterruptedException {
+    private void waitForTagValue(String key, ScanStatus expectedValue) throws InterruptedException {
         long timeoutMillis = Duration.ofSeconds(60).toMillis();
         long sleepMillis = 10000;
         long start = System.currentTimeMillis();
@@ -75,7 +77,7 @@ public class VirusScanValidationTest {
                     .orElse(null);
 
             if (expectedValue.equals(actual)) {
-                assertThat(actual).isEqualTo(expectedValue);
+                assertThat(actual).isEqualTo(expectedValue.toString());
                 return;
             }
 

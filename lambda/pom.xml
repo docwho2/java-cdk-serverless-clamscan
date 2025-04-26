@@ -18,6 +18,12 @@
     
     <dependencies>
         
+        <dependency>
+            <groupId>cloud.cleo.clamav</groupId>
+            <artifactId>shared-model</artifactId>
+            <version>1.0</version>
+        </dependency>
+        
         <!-- Lambda Logging -->
         <dependency>
             <groupId>com.amazonaws</groupId>

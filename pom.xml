@@ -33,6 +33,7 @@
 
 
     <modules>
+        <module>shared-model</module>
         <module>lambda</module>
         <module>cdk</module>
         <module>integration-test</module> 
