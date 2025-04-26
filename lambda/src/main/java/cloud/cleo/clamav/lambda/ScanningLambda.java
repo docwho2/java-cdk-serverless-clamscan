@@ -12,6 +12,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectTaggingRequest;
@@ -21,7 +22,7 @@ import software.amazon.awssdk.services.s3.model.Tagging;
 
 /**
  * Consume S3 Object create event and then scan Object and set Tag with result.
- * 
+ *
  * @author sjensen
  */
 public class ScanningLambda implements RequestHandler<S3EventNotification, Void> {
@@ -29,7 +30,7 @@ public class ScanningLambda implements RequestHandler<S3EventNotification, Void>
     /**
      * When true, only set tagging on object when it is infected. This makes it easier to fire a lambda on Tag event to
      * react to infected files. Otherwise when false tagging events will fire on all statuses which may not be what you
-     * want.  If you want to deny access via bucket policy while scanning, then this will need to be false.
+     * want. If you want to deny access via bucket policy while scanning, then this will need to be false.
      */
     final static boolean ONLY_TAG_INFECTED = true;
 
@@ -78,7 +79,7 @@ public class ScanningLambda implements RequestHandler<S3EventNotification, Void>
             }
 
             // Download the file to /tmp. Cleanup key if it has many / characters and yield filename only
-            Path localFilePath = Path.of("/tmp",new File(key).getName());
+            Path localFilePath = Path.of("/tmp", new File(key).getName());
             try {
                 log.info("Downloading file {} from bucket {} to {}", key, bucket, localFilePath);
                 GetObjectRequest getObjectRequest = GetObjectRequest.builder()
@@ -109,11 +110,28 @@ public class ScanningLambda implements RequestHandler<S3EventNotification, Void>
                 );
                 pb.redirectErrorStream(true);
                 Process process = pb.start();
-                int exitCode = process.waitFor();
-                log.debug("Process Output: {}", new String(process.getInputStream().readAllBytes()));
+
+                int remainingMillis = context.getRemainingTimeInMillis();
+                log.info("Remaining Millis before Lambda will timeout: {}", remainingMillis);
+
+                // Wait up till the amount of time left the Lambda has with 10 second buffer
+                boolean finished = process.waitFor(remainingMillis - 10000, TimeUnit.MILLISECONDS);
+
+                if (!finished) {
+                    process.destroyForcibly();
+                    log.error("clamscan process timed out!");
+                    if (! ONLY_TAG_INFECTED ) {
+                        setScanTagStatus(bucket, key, ScanStatus.ERROR).join(); // Wait for result before exiting
+                    }
+                    return;
+                }
+
+                try (final var is = process.getInputStream()) {
+                    log.debug("Process Output: {}", new String(is.readAllBytes()));
+                }
 
                 // According to ClamAV: 0 means CLEAN, 1 means INFECTED, else ERROR.
-                status = switch (exitCode) {
+                status = switch (process.exitValue()) {
                     case 0 ->
                         ScanStatus.CLEAN;
                     case 1 ->
@@ -123,7 +141,7 @@ public class ScanningLambda implements RequestHandler<S3EventNotification, Void>
                 };
                 log.info("Scan result for {}: {}", key, status);
             } catch (IOException | InterruptedException e) {
-                log.error("Error running clamscan: {}", e.getMessage());
+                log.error("Error running clamscan: ", e);
                 return;
             } finally {
                 try {
@@ -153,7 +171,7 @@ public class ScanningLambda implements RequestHandler<S3EventNotification, Void>
      * @param key
      * @param status
      */
-    private  CompletableFuture<PutObjectTaggingResponse> setScanTagStatus(String bucket, String key, ScanStatus status) {
+    private CompletableFuture<PutObjectTaggingResponse> setScanTagStatus(String bucket, String key, ScanStatus status) {
         try {
             // Get current tags
             List<Tag> existingTags = s3Client.getObjectTagging(b -> b.bucket(bucket).key(key))
@@ -184,11 +202,10 @@ public class ScanningLambda implements RequestHandler<S3EventNotification, Void>
                     .tagging(tagging)
                     .build();
 
-            
-            log.info("Updated object tags for {} with scan-status: {}", key, status);
+            log.info("Updating object tags for {} with scan-status: {}", key, status);
             return s3Client.putObjectTagging(putTaggingRequest);
         } catch (Exception e) {
-            log.error("Error updating object tags for {}: {}", key, e.getMessage());
+            log.error("Error updating object tags", e);
             return CompletableFuture.failedFuture(e);
         }
     }
