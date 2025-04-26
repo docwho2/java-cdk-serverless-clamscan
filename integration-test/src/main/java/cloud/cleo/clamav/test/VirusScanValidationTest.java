@@ -10,6 +10,7 @@ import java.time.Duration;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.platform.engine.discovery.DiscoverySelectors;
 import org.junit.platform.launcher.Launcher;
 import org.junit.platform.launcher.LauncherDiscoveryRequest;
@@ -50,6 +51,13 @@ public class VirusScanValidationTest {
             waitForTagValue(OVERSIZED_KEY, "FILE_SIZE_EXCEEED");
         } finally {
             clearTags(OVERSIZED_KEY);
+        }
+    }
+    
+    @AfterAll
+    static void cleanup() {
+        if (s3 != null) {
+            s3.close();
         }
     }
 
