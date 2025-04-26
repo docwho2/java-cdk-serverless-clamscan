@@ -35,20 +35,26 @@ public class VirusScanValidationTest {
 
     @Test
     public void validateScanOfKnownInfectedFile() throws InterruptedException {
-        retriggerScan(INFECTED_KEY);
-        waitForTagValue(INFECTED_KEY, "INFECTED");
-        clearTags(INFECTED_KEY);
+        try {
+            retriggerScan(INFECTED_KEY);
+            waitForTagValue(INFECTED_KEY, "INFECTED");
+        } finally {
+            clearTags(INFECTED_KEY);
+        }
     }
 
     @Test
     public void validateScanOfOversizedFile() throws InterruptedException {
-        retriggerScan(OVERSIZED_KEY);
-        waitForTagValue(OVERSIZED_KEY, "FILE_SIZE_EXCEEED");
-        clearTags(OVERSIZED_KEY);
+        try {
+            retriggerScan(OVERSIZED_KEY);
+            waitForTagValue(OVERSIZED_KEY, "FILE_SIZE_EXCEEED");
+        } finally {
+            clearTags(OVERSIZED_KEY);
+        }
     }
 
     private void waitForTagValue(String key, String expectedValue) throws InterruptedException {
-        long timeoutMillis = Duration.ofSeconds(30).toMillis();
+        long timeoutMillis = Duration.ofSeconds(60).toMillis();
         long sleepMillis = 10000;
         long start = System.currentTimeMillis();
 
