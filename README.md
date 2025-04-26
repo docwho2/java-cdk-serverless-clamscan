@@ -51,6 +51,7 @@ The inspiration for this project came from reviewing the [AWS Labs cdk-serverles
 | `lambda/`  | Java-based ClamAV Lambda function                        |
 | `cdk/`     | CDK stack that provisions S3, Lambda, and IAM roles      |
 | `integration-test/` | Optional: test framework to validate scan pipeline |
+| `shared-model/`     | Common definitions used in lambda and test packages |
 
 ---
 
@@ -66,10 +67,10 @@ The inspiration for this project came from reviewing the [AWS Labs cdk-serverles
 ## 🚀 CLI Build & Deploy
 
 ```bash
-# Build the Project and copy to Docker context
-mvn package
+# Build the Project and copy Lambda JAR to Docker context
+mvn install
 
-# CDK synth + deploy (Java-based)
+# CDK deploy with S3 bucket names to watch for S3 Create Events
 cd cdk
 cdk deploy --context bucketNames="bucketName1,bucketName2"
 ```
