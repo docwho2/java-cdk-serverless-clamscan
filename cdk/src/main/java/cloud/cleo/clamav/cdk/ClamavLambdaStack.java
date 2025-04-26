@@ -3,7 +3,10 @@ package cloud.cleo.clamav.cdk;
 import java.util.ArrayList;
 import java.util.List;
 import software.amazon.awscdk.App;
+import software.amazon.awscdk.Aspects;
 import software.amazon.awscdk.Duration;
+import software.amazon.awscdk.IAspect;
+import software.amazon.awscdk.RemovalPolicy;
 import software.amazon.awscdk.Size;
 import software.amazon.awscdk.Stack;
 import software.amazon.awscdk.StackProps;
@@ -12,12 +15,14 @@ import software.amazon.awscdk.services.lambda.Architecture;
 import software.amazon.awscdk.services.lambda.DockerImageCode;
 import software.amazon.awscdk.services.lambda.DockerImageFunction;
 import software.amazon.awscdk.services.lambda.EcrImageCodeProps;
+import software.amazon.awscdk.services.logs.LogGroup;
 import software.amazon.awscdk.services.logs.RetentionDays;
 import software.amazon.awscdk.services.s3.Bucket;
 import software.amazon.awscdk.services.s3.EventType;
 import software.amazon.awscdk.services.s3.IBucket;
 import software.amazon.awscdk.services.s3.notifications.LambdaDestination;
 import software.constructs.Construct;
+import software.constructs.IConstruct;
 
 /**
  * CDK Stack to deploy Clam AV Container image and set permissions on S3 Buckets that will be scanned.
@@ -25,6 +30,8 @@ import software.constructs.Construct;
  * @author sjensen
  */
 public class ClamavLambdaStack extends Stack {
+    
+    private static final String PRIMARY_LAMBDA_NAME = "ClamavLambdaFunction";
 
     public ClamavLambdaStack(final Construct scope, final String id, final StackProps props) {
         super(scope, id, props);
@@ -50,11 +57,11 @@ public class ClamavLambdaStack extends Stack {
         // then copies the produced JAR into the asset output so that the Dockerfile COPY
         // instruction (which expects target/lambda.jar) works properly.
         DockerImageAsset imageAsset = DockerImageAsset.Builder.create(this, "ClamavLambdaImage")
-                .directory(".") 
+                .directory(".")
                 .build();
 
         // Create a Docker-based Lambda function using the built image.
-        DockerImageFunction lambdaFunction = DockerImageFunction.Builder.create(this, "ClamavLambdaFunction")
+        DockerImageFunction lambdaFunction = DockerImageFunction.Builder.create(this, PRIMARY_LAMBDA_NAME)
                 .code(DockerImageCode.fromEcr(imageAsset.getRepository(),
                         EcrImageCodeProps.builder().tagOrDigest(imageAsset.getImageTag()).build()))
                 //
@@ -71,9 +78,9 @@ public class ClamavLambdaStack extends Stack {
                 //
                 // Scans should complete within a minute, so 10 mins is pretty conservative to allow scan to complete
                 .timeout(Duration.minutes(10))
-                .functionName("ClamavLambdaFunction")
+                .functionName(PRIMARY_LAMBDA_NAME)
                 .description("Scans S3 files based on ObjectCreate events")
-                .logRetention(RetentionDays.ONE_MONTH)  // Don't let the logs hang around forever
+                .logRetention(RetentionDays.ONE_MONTH) // Don't let the logs hang around forever
                 .build();
 
         // For each bucket passed via CLI:
@@ -87,12 +94,15 @@ public class ClamavLambdaStack extends Stack {
             // Add the Lambda function as an event target for all object created events.
             bucket.addEventNotification(EventType.OBJECT_CREATED, new LambdaDestination(lambdaFunction));
         }
+        
+        // Set all log files (except primary Lambda) to destroy on stack destroy
+        Aspects.of(this).add(new RetentionAspect());
     }
 
     /**
      * Entry point for CDK.
-     * 
-     * @param args 
+     *
+     * @param args
      */
     public static void main(final String[] args) {
         App app = new App();
@@ -101,4 +111,26 @@ public class ClamavLambdaStack extends Stack {
                 .build());
         app.synth();
     }
+
+    /**
+     * Aspect that will set DESTORY on log groups.
+     */
+    public static class RetentionAspect implements IAspect {
+
+    // The log group name to ignore (your real Lambda log group)
+    private static final String PRIMARY_LAMBDA_LOG_GROUP = "/aws/lambda/" + PRIMARY_LAMBDA_NAME;
+
+    @Override
+    public void visit(final IConstruct node) {
+        if (node instanceof LogGroup logGroup) {
+            String logGroupName = logGroup.getLogGroupName();
+
+            // Protect your main Lambda log group (do not alter it)
+            if (logGroupName == null || !logGroupName.equals(PRIMARY_LAMBDA_LOG_GROUP)) {
+                // We can't change retention safely (no setter), but we can destroy on stack removal
+                logGroup.applyRemovalPolicy(RemovalPolicy.DESTROY);
+            }
+        }
+    }
+}
 }
