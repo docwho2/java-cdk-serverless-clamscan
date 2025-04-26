@@ -63,7 +63,7 @@ The inspiration for this project came from reviewing the [AWS Labs cdk-serverles
 
 ---
 
-## 🚀 Build & Deploy
+## 🚀 CLI Build & Deploy
 
 ```bash
 # Build the Project and copy to Docker context
@@ -71,7 +71,7 @@ mvn package
 
 # CDK synth + deploy (Java-based)
 cd cdk
-cdk deploy
+cdk deploy --context bucketNames="bucketName1,bucketName2"
 ```
 
 ---
