@@ -20,7 +20,7 @@ import org.junit.platform.launcher.listeners.SummaryGeneratingListener;
 public class VirusScanValidationTest {
 
     private static final String BUCKET_NAME = System.getenv("VALIDATION_BUCKET");
-    private static final String INFECTED_KEY = "eicar-test-file.txt";
+    private static final String INFECTED_KEY = "eicar.txt";
     private static final String OVERSIZED_KEY = "large-test-file.zip";
     private static final String SCAN_TAG_NAME = "scan-status";
 
@@ -35,19 +35,21 @@ public class VirusScanValidationTest {
 
     @Test
     public void validateScanOfKnownInfectedFile() throws InterruptedException {
+        retriggerScan(INFECTED_KEY);
         waitForTagValue(INFECTED_KEY, "INFECTED");
         clearTags(INFECTED_KEY);
     }
 
     @Test
     public void validateScanOfOversizedFile() throws InterruptedException {
+        retriggerScan(OVERSIZED_KEY);
         waitForTagValue(OVERSIZED_KEY, "FILE_SIZE_EXCEEED");
         clearTags(OVERSIZED_KEY);
     }
 
     private void waitForTagValue(String key, String expectedValue) throws InterruptedException {
         long timeoutMillis = Duration.ofSeconds(30).toMillis();
-        long sleepMillis = 1000;
+        long sleepMillis = 10000;
         long start = System.currentTimeMillis();
 
         while (System.currentTimeMillis() - start < timeoutMillis) {
@@ -82,6 +84,18 @@ public class VirusScanValidationTest {
                 .bucket(BUCKET_NAME)
                 .key(key)
                 .build());
+    }
+
+    private void retriggerScan(String key) {
+        CopyObjectRequest copyRequest = CopyObjectRequest.builder()
+                .sourceBucket(BUCKET_NAME)
+                .sourceKey(key)
+                .destinationBucket(BUCKET_NAME)
+                .destinationKey(key)
+                .metadataDirective(MetadataDirective.COPY)
+                .build();
+
+        s3.copyObject(copyRequest);
     }
 
     public static void main(String[] args) {

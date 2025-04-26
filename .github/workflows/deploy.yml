@@ -78,12 +78,30 @@ jobs:
       run: > 
         mvn package -DskipTests
         --no-transfer-progress --quiet
-    
+        
+    - name: Construct bucketNames Context adding Validation Bucket for test if defined
+      id: construct-buckets
+      run: |
+        BUCKETS="${{ vars.S3_BUCKET_NAMES }}"
+        if [ -n "${{ vars.VALIDATION_BUCKET }}" ]; then
+          BUCKETS="${BUCKETS},${{ vars.VALIDATION_BUCKET }}"
+        fi
+        echo "BUCKET_NAMES=$BUCKETS" >> $GITHUB_ENV
+        echo "Final list of bucket names to deploy against: $BUCKETS"
+  
     - name: Ensure CDK is bootstraped and up to date
       working-directory: ./cdk
       run: cdk bootstrap --ci=true -c accountId=${AWS_ACCOUNT_ID} aws://${AWS_ACCOUNT_ID}/${{ vars.REGION }}
     
     - name: Deploy CDK Stack
       working-directory: ./cdk
-      run: cdk deploy --require-approval=never --ci=true --context bucketNames="${{ vars.S3_BUCKET_NAMES }}"
+      run: cdk deploy --require-approval=never --ci=true --context bucketNames="${{ env.BUCKET_NAMES }}"
       
+    - name: Run Virus Scan Integration Tests (if VALIDATION_BUCKET is set)
+      if: ${{ vars.VALIDATION_BUCKET != '' }}
+      working-directory: ./integration-test
+      env:
+        VALIDATION_BUCKET: ${{ vars.VALIDATION_BUCKET }}
+      run: |
+        echo "Running Virus Scan Validation Tests..."
+        mvn --batch-mode --no-transfer-progress exec:java
