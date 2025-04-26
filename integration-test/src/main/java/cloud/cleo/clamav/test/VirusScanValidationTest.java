@@ -76,8 +76,8 @@ public class VirusScanValidationTest {
                     .findFirst()
                     .orElse(null);
 
-            if (expectedValue.equals(actual)) {
-                assertThat(actual).isEqualTo(expectedValue.toString());
+            if (expectedValue.name().equals(actual)) {
+                assertThat(actual).isEqualTo(expectedValue.name());
                 return;
             }
 
