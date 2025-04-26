@@ -76,7 +76,7 @@ jobs:
     
     - name: Build top level project which will have lambda jar ready for CDK build
       run: > 
-        mvn package -DskipTests
+        mvn install -DskipTests
         --no-transfer-progress --quiet
         
     - name: Construct bucketNames Context adding Validation Bucket for test if defined
