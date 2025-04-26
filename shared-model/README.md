@@ -1,42 +1,39 @@
-# Lambda: ClamAV Virus Scanning Function
+# shared-model
 
-This module contains the AWS Lambda implementation for scanning S3 objects for viruses using **ClamAV**. Built with **Java 21**, this high-performance, serverless function uses a **container-based deployment** and leverages the **AWS SDK v2 Async Client with CRT (Common Runtime)** for optimal performance.
+This module defines shared Java model classes used across multiple subprojects.
 
----
+## Purpose
 
-## 🚀 Features
+- Centralizes common enums and data types such as `ScanStatus` used in both:
+  - Lambda processing code
+  - Integration test code
+- Reduces duplication across projects.
+- Ensures consistent data handling and tagging conventions across modules.
 
-- ✅ **Java 21** with virtual thread readiness
-- 🔬 **ClamAV** integration (with up-to-date virus definitions)
-- ☁️ **Asynchronous S3 interactions** via `S3AsyncClient` + CRT (zero-copy, event-driven I/O)
-- 🐳 **Container-based Lambda deployment** using ARM64 base image (faster cold starts, lower cost)
-- 🧠 **Smart object tagging**: adds `scan-status` tag (`INFECTED` / `CLEAN`) after scan (depending on config)
-- ⚡ **Parallel processing**: Uses `CompletableFuture` for high concurrency
-- 🧼 **/tmp-safe**: Streams S3 content directly to `/tmp`, deletes after scan
+## Features
 
----
+- Defines the `ScanStatus` enum, representing the virus scan results:
+  - `CLEAN`
+  - `INFECTED`
+  - `FILE_SIZE_EXCEEED`
+  - `SCANNING`
+  - `ERROR`
+- Safe to use across Lambda and other Java-based utilities.
 
-## ⚙️ How It Works
+## Usage
 
-1. **Triggered by S3 Event Notification**
-2. **Downloads file** to Lambda `/tmp` using `S3AsyncClient`
-3. **Executes `clamscan`** in a native container image with preloaded virus definitions
-4. **Parses output** to detect infection
-5. **Tags file** in-place with `clamav-status=OK` or `INFECTED`
+Add a Maven dependency on this module from other modules (e.g., `lambda`, `integration-test`):
 
----
+```xml
+<dependency>
+    <groupId>cloud.cleo.clamav</groupId>
+    <artifactId>shared-model</artifactId>
+    <version>1.0</version>
+</dependency>
+```
 
-## 📁 Build Output
+## Notes
 
-The `target/lambda-1.0.jar` file is automatically copied to the CDK module during Maven build to be included in the container image.
+- Keep the `shared-model` module free from AWS SDK, logging, or other heavy dependencies.
+- Intended only for plain Java data structures.
 
----
-
-## 🧰 Technologies Used
-
-- Java 21
-- AWS SDK v2 with CRT
-- Log4j2
-- Maven Shade Plugin
-- ClamAV
-- Docker & AWS Lambda Container Images
