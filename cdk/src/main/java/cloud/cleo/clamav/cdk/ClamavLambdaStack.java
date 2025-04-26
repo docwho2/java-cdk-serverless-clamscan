@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 import software.amazon.awscdk.App;
 import software.amazon.awscdk.Duration;
-import software.amazon.awscdk.RemovalPolicy;
 import software.amazon.awscdk.Size;
 import software.amazon.awscdk.Stack;
 import software.amazon.awscdk.StackProps;
@@ -13,7 +12,6 @@ import software.amazon.awscdk.services.lambda.Architecture;
 import software.amazon.awscdk.services.lambda.DockerImageCode;
 import software.amazon.awscdk.services.lambda.DockerImageFunction;
 import software.amazon.awscdk.services.lambda.EcrImageCodeProps;
-import software.amazon.awscdk.services.logs.LogGroup;
 import software.amazon.awscdk.services.logs.RetentionDays;
 import software.amazon.awscdk.services.s3.Bucket;
 import software.amazon.awscdk.services.s3.EventType;
@@ -92,13 +90,6 @@ public class ClamavLambdaStack extends Stack {
             bucket.addEventNotification(EventType.OBJECT_CREATED, new LambdaDestination(lambdaFunction));
         }
 
-        // Set all log files (except primary Lambda) to destroy on stack destroy
-        this.getNode().findAll()
-                .stream()
-                .filter(c -> c instanceof LogGroup)
-                .map(c -> (LogGroup) c)
-                .filter(lg -> !lg.getLogGroupName().equals("/aws/lambda/" + PRIMARY_LAMBDA_NAME))
-                .forEach(lg -> lg.applyRemovalPolicy(RemovalPolicy.DESTROY));
     }
 
     /**
