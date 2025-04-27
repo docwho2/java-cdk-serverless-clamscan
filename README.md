@@ -60,8 +60,8 @@ The inspiration for this project came from reviewing the [AWS Labs cdk-serverles
 
 - Uses **ARM64** Lambda base image for faster cold starts and lower runtime cost
 - **ClamAV definitions** are embedded at Docker build time — no S3 download needed at runtime
-- **Only tags infected files by default** (configurable via static boolean)
-- **No public internet required** for virus definitions or dependency download at runtime and no VPC necessary
+- **Only tags infected files by default** (configurable via workflow var or ENV var)
+- **No public internet required** for virus definitions or dependency download at runtime and no VPC,EFS necessary
 
 ---
 
