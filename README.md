@@ -103,6 +103,9 @@ git clone https://github.com/docwho2/java-cdk-serverless-clamscan.git
 # CD into main repo dir
 cd java-cdk-serverless-clamscan
 
+# Source cloudshell file to prep Cloud Shell with Java/Maven/CDK
+source cloudshell.sh
+
 # Build the Project and copy Lambda JAR to Docker context
 mvn install
 
