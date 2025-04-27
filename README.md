@@ -65,14 +65,14 @@ The inspiration for this project came from reviewing the [AWS Labs cdk-serverles
 
 ---
 
-## 🚀 CLI Build & Deploy (ARM Platform, Linux or Mac)
+## 🚀 CLI Build & Deploy (ARM Platform Mac)
 
 If you have [brew](https://brew.sh) installed (highly recommended) then:
 ```bash
 brew install aws-cdk
 brew install corretto21
 brew install maven
-
+brew install --cask docker
 ```
 
 Assuming you have all requried software, CDK is bootstraped and you have valid AWS Keys set then:
@@ -91,10 +91,15 @@ mvn install
 cd cdk
 
 # Set buckets and whether you want to tag only INFECTED files only or set tag on all files (SCANNING,CLEAN,ERROR,INFECTED,etc.)
-cdk deploy --context bucketNames="bucketName1,bucketName2" --context ONLY_TAG_INFECTED="true"
+cdk deploy --context bucketNames="bucketName1,bucketName2" --context ONLY_TAG_INFECTED="true|false"
 ```
 
 ## 🚀 CLI Build & Deploy x86 (AWS CloudShell)
+
+Easiest method to get deployed since this is a clean environment that will have AWS Creds all loaded assuming you have a role that 
+grants all the needed permissions (Administrator or Power User).  If you just want to test it out quickly this is will get you going fast and easy! 
+Since its quite more complicated to get CloudShell to build arm64, this will build everything for x86.  The CDK code detects CloudShell and then 
+targets x86 platform.  For production you'll like integrate into your own pipeline strategy or use GitHub Workflow which can build arm64 easily.
 
 ```bash
 # Clone Repo
@@ -113,7 +118,7 @@ mvn install
 cd cdk
 
 # Set buckets and whether you want to tag only INFECTED files only or set tag on all files (SCANNING,CLEAN,ERROR,INFECTED,etc.)
-cdk deploy --context bucketNames="bucketName1,bucketName2" --context ONLY_TAG_INFECTED="true"
+cdk deploy --context bucketNames="bucketName1,bucketName2" --context ONLY_TAG_INFECTED="true|false"
 ```
 
 ## 🚀 Forking repository and utlizing the GitHub Workflow
