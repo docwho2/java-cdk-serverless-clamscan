@@ -57,12 +57,8 @@ public class VirusScanValidationTest {
     public void validateScanningTagSetImmediatelyIfNotOnlyInfected() throws InterruptedException {
         assumeTrue(!ONLY_TAG_INFECTED, "Skipping because ONLY_TAG_INFECTED is true");
 
-        try {
-            retriggerScan(INFECTED_KEY);
-            waitForTagValue(INFECTED_KEY, ScanStatus.SCANNING);
-        } finally {
-            clearTags(INFECTED_KEY);
-        }
+        retriggerScan(INFECTED_KEY);
+        waitForTagValue(INFECTED_KEY, ScanStatus.SCANNING);
     }
 
     /**
