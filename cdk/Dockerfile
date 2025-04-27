@@ -10,19 +10,22 @@ RUN apt-get update -y && \
 # Copy Clamscan
 RUN cp /usr/bin/clamscan /tmp/
 
-# Builder stage: copy all required shared libraries into /tmp/clamav_libs
+# Detect platform and copy libraries
 RUN mkdir -p /tmp/clamav_libs && \
-    cp /lib/aarch64-linux-gnu/libclamav.so.* /tmp/clamav_libs/ && \
-    cp /lib/aarch64-linux-gnu/libjson-c.so.* /tmp/clamav_libs/ && \
-    cp /lib/aarch64-linux-gnu/libbz2.so.* /tmp/clamav_libs/ && \
-    cp /lib/aarch64-linux-gnu/libltdl.so.* /tmp/clamav_libs/ && \
-    cp /lib/aarch64-linux-gnu/libxml2.so.* /tmp/clamav_libs/ && \
-    cp /lib/aarch64-linux-gnu/libmspack.so.* /tmp/clamav_libs/ && \
-    cp /lib/aarch64-linux-gnu/libcrypto.so.* /tmp/clamav_libs/ && \
-    cp /lib/aarch64-linux-gnu/libz.so.* /tmp/clamav_libs/ && \
-    cp /lib/aarch64-linux-gnu/libtfm.so.* /tmp/clamav_libs/ && \
-    cp /lib/aarch64-linux-gnu/libpcre2-8.so.* /tmp/clamav_libs/ && \
-    cp /lib/aarch64-linux-gnu/liblzma.so.* /tmp/clamav_libs/
+    ARCH=$(uname -m) && \
+    LIB_DIR="/lib/$ARCH-linux-gnu" && \
+    echo "Detected architecture: $ARCH, copying libraries from $LIB_DIR" && \
+    cp ${LIB_DIR}/libclamav.so.* /tmp/clamav_libs/ && \
+    cp ${LIB_DIR}/libjson-c.so.* /tmp/clamav_libs/ && \
+    cp ${LIB_DIR}/libbz2.so.* /tmp/clamav_libs/ && \
+    cp ${LIB_DIR}/libltdl.so.* /tmp/clamav_libs/ && \
+    cp ${LIB_DIR}/libxml2.so.* /tmp/clamav_libs/ && \
+    cp ${LIB_DIR}/libmspack.so.* /tmp/clamav_libs/ && \
+    cp ${LIB_DIR}/libcrypto.so.* /tmp/clamav_libs/ && \
+    cp ${LIB_DIR}/libz.so.* /tmp/clamav_libs/ && \
+    (cp ${LIB_DIR}/libtfm.so.* /tmp/clamav_libs/ || true) && \
+    cp ${LIB_DIR}/libpcre2-8.so.* /tmp/clamav_libs/ && \
+    cp ${LIB_DIR}/liblzma.so.* /tmp/clamav_libs/
 
 
 # Create a directory for the definitions and run freshclam to update them.
