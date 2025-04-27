@@ -155,7 +155,7 @@ The general steps are:
 * [Fork the repository](https://docs.github.com/en/get-started/quickstart/fork-a-repo)
 * [Setup required Secrets](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions#creating-secrets-for-an-environment) for each environment you want.
   - Setup either OIDC or Access Keys as described above.
-* Setup [variables](https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/store-information-in-variables#creating-configuration-variables-for-an-environment).
+* Setup [variables](https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/store-information-in-variables#creating-configuration-variables-for-an-environment) for each environment.
   - **S3_BUCKET_NAMES** is a comma seperated list of S3 bucket names to perform scanning on
     - CDK deployment will allow the Container Lambda to Read Object and write tags and subscrive to Obect Create events to trigger the scan
   - Set **ONLY_TAG_INFECTED** to "true" or "false"
@@ -228,7 +228,7 @@ If you want to look at all tags (**ONLY_TAG_INFECTED** = false) and deny downloa
 
 ## 📌 Responding to tag events in Java
 
-Since this project has a defined scope of only tagging files and is designed to be deployed outside the scope of a VPC (keep it simple) your apllication 
+Since this project has a defined scope of only tagging files and is designed to be deployed outside the scope of a VPC (keep it simple) your application 
 code might need to react to INFECTED files.  Here is an example in Java.
 
 ```Java
