@@ -226,6 +226,114 @@ If you want to look at all tags (**ONLY_TAG_INFECTED** = false) and deny downloa
 
 ---
 
+## 📌 Responding to tag events in Java
+
+Since this project has a defined scope of only tagging files and is designed to be deployed outside the scope of a VPC (keep it simple) your apllication 
+code might need to react to INFECTED files.  Here is an example in Java.
+
+```Java
+public class S3ClamAVProcessor implements RequestHandler<S3EventNotification, Void> {
+
+    // Initialize the Log4j logger.
+    static final Logger log = Logger.getLogger(S3ClamAVProcessor.class);
+
+    // Data Service Layer
+    static final DSLContext dsl = IVRDataSource.getDSL();
+    
+    static final S3Client s3 = S3Client.create();
+
+    @Override
+    public Void handleRequest(S3EventNotification s3event, Context context) {
+        for (S3EventNotification.S3EventNotificationRecord record : s3event.getRecords()) {
+            log.debug(record);
+            String eventName = record.getEventName();
+            if (!"ObjectTagging:Put".equals(eventName)) {
+                log.warn("Not Object Tagging event, ignoring");
+                continue;
+            }
+
+            String bucket = record.getS3().getBucket().getName();
+            String key = record.getS3().getObject().getUrlDecodedKey();
+
+            // Fetch the tags
+            GetObjectTaggingResponse tagging = s3.getObjectTagging(GetObjectTaggingRequest.builder()
+                    .bucket(bucket)
+                    .key(key)
+                    .build());
+
+            boolean isInfected = tagging.tagSet().stream()
+                    .anyMatch(tag -> "scan-status".equals(tag.key()) && "INFECTED".equalsIgnoreCase(tag.value()));
+
+            if (isInfected) {
+                log.debug("File is infected, setting infected flag on: " + key);
+                
+                // Look up DB row and set status so front-end shows infected to users
+                try {
+                    int result = dsl.update(FILE_UPLOADS)
+                            .set(FILE_UPLOADS.INFECTED,true)
+                            .where(FILE_UPLOADS.UUID.eq(UUID.fromString(key)))
+                            .execute();
+                    if ( result > 0 ) {
+                        log.debug("infected status updated on record");
+                    } else {
+                        log.warn("file_uploads record not found, could not update");
+                    }
+
+                    // Perform any other business logic, send email, etc.
+
+                } catch ( DataAccessException dae) {
+                    // Allow retry on lambda if DB down
+                    log.warn("DAE, throwing for retry",dae);
+                    throw dae;
+                } catch( Exception e ) {
+                    // swallow anything else, likely logic error
+                    log.error("Could not update infected flag",e);
+                }
+            } else {
+                log.warn("Tag set does not indicate INFECTED, ignoring");
+            }
+        }
+
+        return null;
+
+    }
+}
+```
+
+In this example, the lambda receives ObjectTagging events and is subscribed for bucket notifications.  Cloudformation for such a lambda might look like:
+
+```yaml
+S3ClamAVProcessor:
+        Type: AWS::Serverless::Function
+        DeletionPolicy: Delete
+        Properties:
+            FunctionName: S3ClamAVProcessor
+            Description: Respond to S3 Events when virus detected on Objects
+            Handler: com.sst.ivr.lambda.S3ClamAVProcessor
+            MemorySize: 1024
+            Timeout: 60
+            CodeUri:
+                Bucket: !Ref buildBucketName
+                Key: !Ref buildObjectKey
+            VpcConfig:
+                SubnetIds: !Ref Subnets
+                SecurityGroupIds: !Ref SecurityGroups
+            Policies:
+                - AmazonSSMReadOnlyAccess
+                - Version: '2012-10-17'
+                  Statement:
+                    - Effect: Allow
+                      Action: s3:GetObjectTagging
+                      Resource: !Join
+                        - ""
+                        - - "arn:aws:s3:::"
+                          - !FindInMap [EnvMap, !Ref ENVIRONMENT, FileUploadsBucketName]
+                          - "/*"
+            # Need to add trigger by hand for s3:ObjectTagging:Put notification
+```
+
+---
+
 ## 📌 Goals
 
 - Keep it **easy to understand**
