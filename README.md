@@ -30,6 +30,7 @@ The inspiration for this project came from reviewing the [AWS Labs cdk-serverles
 - Uses **Java 21**, optimized with **AWS SDK v2 + CRT-based async S3 client**
 - Deploys via **container-based AWS Lambda** using **ARM64** for speed and cost efficiency
 - Dynamically wires up **any bucket(s)** via CDK to trigger scan and applies needed IAM permissions
+- Validation as part of pipeline to ensure container properly detects virus files (optional)
 
 ---
 

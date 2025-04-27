@@ -2,6 +2,7 @@ package cloud.cleo.clamav.cdk;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import software.amazon.awscdk.App;
 import software.amazon.awscdk.Duration;
 import software.amazon.awscdk.Size;
@@ -30,6 +31,12 @@ public class ClamavLambdaStack extends Stack {
 
     public ClamavLambdaStack(final Construct scope, final String id, final StackProps props) {
         super(scope, id, props);
+
+        // Take ONLY_TAG_INFECTED from context (workflow variable) and prep for passing to Lambda ENV
+        String onlyTagInfectedEnv = (String) this.getNode().tryGetContext("ONLY_TAG_INFECTED");
+        if (onlyTagInfectedEnv == null || onlyTagInfectedEnv.isBlank()) {
+            onlyTagInfectedEnv = "true"; // Default if missing
+        }
 
         // Retrieve a comma-separated list of bucket names from context.
         // For example: cdk deploy --context bucketNames="bucket1,bucket2,bucket3"
@@ -76,6 +83,7 @@ public class ClamavLambdaStack extends Stack {
                 .functionName(PRIMARY_LAMBDA_NAME)
                 .description("Scans S3 files based on ObjectCreate events")
                 .logRetention(RetentionDays.ONE_MONTH) // Don't let the logs hang around forever
+                .environment(Map.of("ONLY_TAG_INFECTED", onlyTagInfectedEnv))
                 .build();
 
         // For each bucket passed via CLI:

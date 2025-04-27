@@ -1,6 +1,8 @@
 package cloud.cleo.clamav.lambda;
 
 import cloud.cleo.clamav.ScanStatus;
+import static cloud.cleo.clamav.ScanStatus.MAX_BYTES;
+import static cloud.cleo.clamav.ScanStatus.ONLY_TAG_INFECTED;
 import static cloud.cleo.clamav.ScanStatus.SCAN_TAG_NAME;
 import com.amazonaws.services.lambda.runtime.Context;
 import org.apache.logging.log4j.LogManager;
@@ -28,16 +30,6 @@ import software.amazon.awssdk.services.s3.model.Tagging;
  * @author sjensen
  */
 public class ScanningLambda implements RequestHandler<S3EventNotification, Void> {
-
-    /**
-     * When true, only set tagging on object when it is infected. This makes it easier to fire a lambda on Tag event to
-     * react to infected files. Otherwise when false tagging events will fire on all statuses which may not be what you
-     * want. If you want to deny access via bucket policy while scanning, then this will need to be false.
-     */
-    final static boolean ONLY_TAG_INFECTED = true;
-
-    // Max size in bytes to process (100MB is safe given 512MB /tmp in Lambda)
-    final static int MAX_BYTES = 100000000;
 
     // Create an S3 client with CRT Async (better download performance and Async calls)
     final static S3AsyncClient s3Client = S3AsyncClient.crtCreate();
