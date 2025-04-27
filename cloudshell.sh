@@ -1,6 +1,4 @@
-#!/bin/bash
-
-# This file should be sourced before running install
+# This file should be sourced before running install on AWS Cloud Shell
 # source cloudshell.sh
 
 set -e

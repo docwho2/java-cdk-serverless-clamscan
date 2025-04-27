@@ -94,7 +94,7 @@ cd cdk
 cdk deploy --context bucketNames="bucketName1,bucketName2" --context ONLY_TAG_INFECTED="true"
 ```
 
-## 🚀 CLI Build & Deploy (AWS CloudShell)
+## 🚀 CLI Build & Deploy x86 (AWS CloudShell)
 
 ```bash
 # Clone Repo
