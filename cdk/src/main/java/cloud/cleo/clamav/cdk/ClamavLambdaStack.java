@@ -9,6 +9,7 @@ import software.amazon.awscdk.Size;
 import software.amazon.awscdk.Stack;
 import software.amazon.awscdk.StackProps;
 import software.amazon.awscdk.services.ecr.assets.DockerImageAsset;
+import software.amazon.awscdk.services.ecr.assets.Platform;
 import software.amazon.awscdk.services.lambda.Architecture;
 import software.amazon.awscdk.services.lambda.DockerImageCode;
 import software.amazon.awscdk.services.lambda.DockerImageFunction;
@@ -38,6 +39,10 @@ public class ClamavLambdaStack extends Stack {
             onlyTagInfectedEnv = "true"; // Default if missing
         }
 
+        boolean runningInCloudShell = isCloudShell();
+        Architecture lambdaArchitecture = runningInCloudShell ? Architecture.X86_64 : Architecture.ARM_64;
+        Platform dockerPlatform = runningInCloudShell ? Platform.LINUX_AMD64 : Platform.LINUX_ARM64;
+
         // Retrieve a comma-separated list of bucket names from context.
         // For example: cdk deploy --context bucketNames="bucket1,bucket2,bucket3"
         String bucketNamesContext = (String) this.getNode().tryGetContext("bucketNames");
@@ -59,6 +64,7 @@ public class ClamavLambdaStack extends Stack {
         // then copies the produced JAR into the asset output so that the Dockerfile COPY
         // instruction (which expects target/lambda.jar) works properly.
         DockerImageAsset imageAsset = DockerImageAsset.Builder.create(this, "ClamavLambdaImage")
+                .platform(dockerPlatform)
                 .directory(".")
                 .build();
 
@@ -68,7 +74,7 @@ public class ClamavLambdaStack extends Stack {
                         EcrImageCodeProps.builder().tagOrDigest(imageAsset.getImageTag()).build()))
                 //
                 // We use ARM because its cheaper for CPU bound executions like CLamAV scanning
-                .architecture(Architecture.ARM_64)
+                .architecture(lambdaArchitecture)
                 //
                 // This seems fine for scanning 100MB files or less.  Increasing will not yield much faster scans, jut cost you more
                 // 3009 gives you 3 VCPU vs <3009 which drops you to 2 VCPU
@@ -98,6 +104,16 @@ public class ClamavLambdaStack extends Stack {
             bucket.addEventNotification(EventType.OBJECT_CREATED, new LambdaDestination(lambdaFunction));
         }
 
+    }
+
+    /**
+     * Detect if using CloudShell which means we need x86.
+     * 
+     * @return 
+     */
+    private static boolean isCloudShell() {
+        String toolingAgent = System.getenv("AWS_TOOLING_USER_AGENT");
+        return toolingAgent != null && toolingAgent.startsWith("AWS-CloudShell/");
     }
 
     /**

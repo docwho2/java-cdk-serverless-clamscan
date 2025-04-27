@@ -1,5 +1,5 @@
 # Builder stage: use Ubuntu to install ClamAV and run freshclam.
-FROM --platform=linux/arm64 ubuntu:20.04 AS builder
+FROM ubuntu:20.04 AS builder
 
 # Prevent interactive prompts.
 ENV DEBIAN_FRONTEND=noninteractive
@@ -32,7 +32,7 @@ RUN mkdir -p /tmp/clamav_defs && \
     cp -R /tmp/clamav_defs /tmp/clamav_defs_output
 
 # Final stage: use the AWS Lambda Java 21 base image.
-FROM --platform=linux/arm64 public.ecr.aws/lambda/java:21 AS final
+FROM public.ecr.aws/lambda/java:21 AS final
 
 # Copy the ClamAV executable from the builder stage.
 COPY --from=builder /tmp/clamscan /usr/bin/clamscan
