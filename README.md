@@ -65,7 +65,7 @@ The inspiration for this project came from reviewing the [AWS Labs cdk-serverles
 
 ---
 
-## 🚀 CLI Build & Deploy
+## 🚀 CLI Build & Deploy (ARM Platform, Linux or Mac)
 
 If you have [brew](https://brew.sh) installed (highly recommended) then:
 ```bash
@@ -78,6 +78,31 @@ brew install maven
 Assuming you have all requried software, CDK is bootstraped and you have valid AWS Keys set then:
 
 ```bash
+# Clone Repo
+git clone https://github.com/docwho2/java-cdk-serverless-clamscan.git
+
+# CD into main repo dir
+cd java-cdk-serverless-clamscan
+
+# Build the Project and copy Lambda JAR to Docker context
+mvn install
+
+# CDK deploy with S3 bucket names to watch for S3 Create Events
+cd cdk
+
+# Set buckets and whether you want to tag only INFECTED files only or set tag on all files (SCANNING,CLEAN,ERROR,INFECTED,etc.)
+cdk deploy --context bucketNames="bucketName1,bucketName2" --context ONLY_TAG_INFECTED="true"
+```
+
+## 🚀 CLI Build & Deploy (AWS CloudShell)
+
+```bash
+# Clone Repo
+git clone https://github.com/docwho2/java-cdk-serverless-clamscan.git
+
+# CD into main repo dir
+cd java-cdk-serverless-clamscan
+
 # Build the Project and copy Lambda JAR to Docker context
 mvn install
 
