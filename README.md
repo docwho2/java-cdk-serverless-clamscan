@@ -329,7 +329,7 @@ S3ClamAVProcessor:
                         - - "arn:aws:s3:::"
                           - !FindInMap [EnvMap, !Ref ENVIRONMENT, FileUploadsBucketName]
                           - "/*"
-            # Need to add trigger by hand for s3:ObjectTagging:Put notification
+            # Need to add trigger by hand for s3:ObjectTagging:Put notification since stack did not create the S3 Bucket
 ```
 
 ---
