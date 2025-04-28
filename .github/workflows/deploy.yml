@@ -62,7 +62,7 @@ jobs:
       id: aws-creds
       uses: aws-actions/configure-aws-credentials@v4
       with:
-        aws-region: us-east-1
+        aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
         # The full role ARN if you are using OIDC
         # https://github.com/aws-actions/configure-aws-credentials#oidc
         role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
@@ -91,7 +91,7 @@ jobs:
   
     - name: Ensure CDK is bootstraped and up to date
       working-directory: ./cdk
-      run: cdk bootstrap --ci=true -c accountId=${AWS_ACCOUNT_ID} aws://${AWS_ACCOUNT_ID}/${{ vars.REGION }}
+      run: cdk bootstrap --ci=true -c accountId=${AWS_ACCOUNT_ID} aws://${AWS_ACCOUNT_ID}/${{ vars.AWS_REGION || 'us-east-1' }}
     
     - name: Deploy CDK Stack
       working-directory: ./cdk

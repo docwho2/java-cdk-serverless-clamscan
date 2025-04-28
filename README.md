@@ -189,6 +189,7 @@ The general steps are:
 * [Setup required Secrets](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions#creating-secrets-for-an-environment) for each environment you want.
   - Setup either OIDC or Access Keys as described above.
 * Setup [variables](https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/store-information-in-variables#creating-configuration-variables-for-an-environment) for each environment.
+  - **AWS_REGION** to deploy to.  Defaults to **us-east-1** if not set.
   - **S3_BUCKET_NAMES** is a comma seperated list of S3 bucket names to perform scanning on
     - CDK deployment will allow the Container Lambda to Read Object and write tags and subscrive to Obect Create events to trigger the scan
   - Set **ONLY_TAG_INFECTED** to "true" or "false"
