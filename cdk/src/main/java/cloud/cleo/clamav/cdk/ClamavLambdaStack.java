@@ -21,6 +21,7 @@ import software.amazon.awscdk.services.lambda.DockerImageFunction;
 import software.amazon.awscdk.services.lambda.EcrImageCodeProps;
 import software.amazon.awscdk.services.logs.RetentionDays;
 import software.amazon.awscdk.services.s3.Bucket;
+import software.amazon.awscdk.services.s3.BucketPolicy;
 import software.amazon.awscdk.services.s3.EventType;
 import software.amazon.awscdk.services.s3.IBucket;
 import software.amazon.awscdk.services.s3.notifications.LambdaDestination;
@@ -50,6 +51,19 @@ public class ClamavLambdaStack extends Stack {
                 // Create a reference to the existing bucket.
                 IBucket bucket = Bucket.fromBucketName(this, "SourceBucket" + count, trimmedName);
                 buckets.add(bucket);
+
+                // Apply a bucket Policy to the Bucket
+                BucketPolicy policy = BucketPolicy.Builder.create(this, "BucketPolicy" + count)
+                        .bucket(bucket)
+                        .build();
+
+                // Add Appropiate policy
+                if (ONLY_TAG_INFECTED) {
+                    policy.getDocument().addStatements(getBucketPolicyDenyInfectedOnly(bucket));
+                } else {
+                    policy.getDocument().addStatements(getBucketPolicyDeny(bucket));
+                }
+
                 count++;
             }
         }
@@ -98,13 +112,6 @@ public class ClamavLambdaStack extends Stack {
 
             // Add the Lambda function as an event target for all object created events.
             bucket.addEventNotification(EventType.OBJECT_CREATED, new LambdaDestination(lambdaFunction));
-
-            // Apply the appropiate bucket policy based on ONLY_TAG_INFECTED
-            if (ONLY_TAG_INFECTED) {
-                bucket.addToResourcePolicy(getBucketPolicyDenyInfectedOnly(bucket));
-            } else {
-                bucket.addToResourcePolicy(getBucketPolicyDeny(bucket));
-            }
         }
 
     }
