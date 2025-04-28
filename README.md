@@ -87,11 +87,16 @@ cd java-cdk-serverless-clamscan
 # Build the Project and copy Lambda JAR to Docker context
 mvn install
 
-# CDK deploy with S3 bucket names to watch for S3 Create Events
+# Change to CDK directory for deployment
 cd cdk
 
-# Set buckets and whether you want to tag only INFECTED files only or set tag on all files (SCANNING,CLEAN,ERROR,INFECTED,etc.)
-cdk deploy --context bucketNames="bucketName1,bucketName2" --context ONLY_TAG_INFECTED="true|false"
+# Set whether you want to tag only INFECTED files only or set tag on all files (SCANING,CLEAN,ERROR,INFECTED,etc.)
+export ONLY_TAG_INFECTED=true
+
+# Deploy and set which buckets will be scanned
+#  You can also add --context addBucketPolicy="true", but be carefull if you have an existing policy, it will overwrite it.
+#  You can also deploy with no bucket names, just to deploy Lambda Container if you want to wire up S3 yourself (just "cdk deploy")
+cdk deploy --context bucketNames="bucketName1,bucketName2"
 ```
 
 ## 🚀 CLI Build & Deploy x86 (AWS CloudShell)
@@ -114,11 +119,16 @@ source cloudshell.sh
 # Build the Project and copy Lambda JAR to Docker context
 mvn install
 
-# CDK deploy with S3 bucket names to watch for S3 Create Events
+# Change to CDK directory for deployment
 cd cdk
 
-# Set buckets and whether you want to tag only INFECTED files only or set tag on all files (SCANNING,CLEAN,ERROR,INFECTED,etc.)
-cdk deploy --context bucketNames="bucketName1,bucketName2" --context ONLY_TAG_INFECTED="true|false"
+# Set whether you want to tag only INFECTED files only or set tag on all files (SCANING,CLEAN,ERROR,INFECTED,etc.)
+export ONLY_TAG_INFECTED=true
+
+# Deploy and set which buckets will be scanned
+#  You can also add --context addBucketPolicy="true", but be carefull if you have an existing policy, it will overwrite it.
+#  You can also deploy with no bucket names, just to deploy Lambda Container if you want to wire up S3 yourself (just "cdk deploy")
+cdk deploy --context bucketNames="bucketName1,bucketName2"
 ```
 
 ## 🚀 Forking repository and utlizing the GitHub Workflow
@@ -190,6 +200,7 @@ The general steps are:
   - Setup either OIDC or Access Keys as described above.
 * Setup [variables](https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/store-information-in-variables#creating-configuration-variables-for-an-environment) for each environment.
   - **AWS_REGION** to deploy to.  Defaults to **us-east-1** if not set.
+  - **ADD_BUCKET_POLICY** to have CDK set an appropiate Bucket Policy to deny Reads on INFECTED files (defaults to false).  Be careful by setting to true because if you have an existing policy it will be replaced.
   - **S3_BUCKET_NAMES** is a comma seperated list of S3 bucket names to perform scanning on
     - CDK deployment will allow the Container Lambda to Read Object and write tags and subscrive to Obect Create events to trigger the scan
   - Set **ONLY_TAG_INFECTED** to "true" or "false"
@@ -204,6 +215,106 @@ The general steps are:
 
 ---
 
+## 📌 Applying S3 Bucket Policy
+
+The CDK deploy can create a [S3 Bucket Polcy](https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-policy-language-overview.html?icmpid=docs_amazons3_console) policy for you but you should ensure there is no existing policy (Maybe for CloudFront for example).
+You can manually apply a policy given the examples below (safest) which is exactly what the CDK code does.
+
+If you opt to tag only infected files, then its rather simple policy that should deny reads on infected files:
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "DenyReadIfInfected",
+            "Effect": "Deny",
+            "Principal": "*",
+            "Action": "s3:GetObject",
+            "Resource": "arn:aws:s3:::your-bucket-name/*",
+            "Condition": {
+                "StringEquals": {
+                    "s3:ExistingObjectTag/scan-status": "INFECTED"
+                }
+            }
+        }
+    ]
+}
+```
+
+CDK Code:
+
+```Java
+private PolicyStatement getBucketPolicyDenyInfectedOnly(IBucket bucket) {
+        return PolicyStatement.Builder.create()
+                .sid("DenyReadIfInfected")
+                .effect(Effect.DENY)
+                .principals(List.of(new AnyPrincipal()))
+                .actions(List.of("s3:GetObject"))
+                .resources(List.of(bucket.arnForObjects("*")))
+                .conditions(Map.of(
+                        "StringEquals", Map.of(
+                                "s3:ExistingObjectTag/" + SCAN_TAG_NAME, INFECTED.name()
+                        )
+                ))
+                .build();
+    }
+```
+
+If you want to look at all tags (**ONLY_TAG_INFECTED** = false) and deny download while scanning is in progres and essentially only allow CLEAN files to download then something like this might apply:
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "DenyReadIfScanning",
+            "Effect": "Deny",
+            "Principal": "*",
+            "Action": "s3:GetObject",
+            "Resource": "arn:aws:s3:::your-bucket-name/*",
+            "Condition": {
+                "StringEquals": {
+                    "s3:ExistingObjectTag/scan-status": [
+                        "SCANNING",
+                        "INFECTED",
+                        "ERROR",
+                        "FILE_SIZE_EXCEEED"
+                    ]
+                }
+            }
+        }
+    ]
+}
+```
+
+CDK Code:
+
+```Java
+private PolicyStatement getBucketPolicyDeny(IBucket bucket) {
+
+        // All statuses except clean
+        List<String> denyStatuses = java.util.Arrays.stream(ScanStatus.values())
+                .filter(status -> status != CLEAN)
+                .map(Enum::name)
+                .toList();
+
+        return PolicyStatement.Builder.create()
+                .sid("DenyReadIfScanning")
+                .effect(Effect.DENY)
+                .principals(List.of(new AnyPrincipal()))
+                .actions(List.of("s3:GetObject"))
+                .resources(List.of(bucket.arnForObjects("*")))
+                .conditions(Map.of(
+                        "StringEquals", Map.of(
+                                "s3:ExistingObjectTag/" + SCAN_TAG_NAME, denyStatuses
+                        )
+                ))
+                .build();
+    }
+```
+
+---
 
 ## 📌 Responding to tag events in Java
 

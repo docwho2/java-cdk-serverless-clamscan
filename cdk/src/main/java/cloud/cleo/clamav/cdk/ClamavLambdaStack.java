@@ -124,6 +124,20 @@ public class ClamavLambdaStack extends Stack {
             bucket.addEventNotification(EventType.OBJECT_CREATED, new LambdaDestination(lambdaFunction));
         }
 
+        // Lambda Function Name Output
+        software.amazon.awscdk.CfnOutput.Builder.create(this, getStackName() + "-LambdaName")
+                .description("Lambda Function Name for Virus Scanning")
+                .value(lambdaFunction.getFunctionName())
+                .build();
+
+        // Lambda Function ARN Output
+        software.amazon.awscdk.CfnOutput.Builder.create(this, getStackName() + "-LambdaArn")
+                .description("Lambda Function ARN for Virus Scanning")
+                .value(lambdaFunction.getFunctionArn())
+                // Export in case someone wants to wire stuff up in another stack
+                .exportName("ClamavLambdaFunctionArn")
+                .build();
+
     }
 
     /**
