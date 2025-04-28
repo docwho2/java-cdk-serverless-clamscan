@@ -39,8 +39,7 @@ public class ClamavLambdaStack extends Stack {
     public ClamavLambdaStack(final Construct scope, final String id, final StackProps props) {
         super(scope, id, props);
 
-        Boolean addBucketPolicyContext = (Boolean) this.getNode().tryGetContext("addBucketPolicy");
-        boolean addBucketPolicy = (addBucketPolicyContext != null && addBucketPolicyContext);
+        boolean addBucketPolicy = getContextBoolean("addBucketPolicy", false);
 
         String validationBucket = System.getenv("VALIDATION_BUCKET") != null
                 ? !System.getenv("VALIDATION_BUCKET").isBlank() ? System.getenv("VALIDATION_BUCKET") : null : null;
@@ -174,6 +173,14 @@ public class ClamavLambdaStack extends Stack {
                         )
                 ))
                 .build();
+    }
+
+    private boolean getContextBoolean(String key, boolean defaultValue) {
+        Object contextValue = this.getNode().tryGetContext(key);
+        if (contextValue instanceof String str) {
+            return "true".equalsIgnoreCase(str.trim());
+        }
+        return defaultValue;
     }
 
     /**
