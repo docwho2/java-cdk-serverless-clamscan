@@ -18,6 +18,7 @@
     
     <dependencies>
         
+        <!-- Shared Model Definitions -->
         <dependency>
             <groupId>cloud.cleo.clamav</groupId>
             <artifactId>shared-model</artifactId>
