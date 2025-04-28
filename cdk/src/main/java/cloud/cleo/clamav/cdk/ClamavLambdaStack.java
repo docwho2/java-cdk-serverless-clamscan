@@ -124,7 +124,7 @@ public class ClamavLambdaStack extends Stack {
                 .resources(List.of(bucket.arnForObjects("*")))
                 .conditions(Map.of(
                         "StringEquals", Map.of(
-                                "s3:ExistingObjectTag/" + SCAN_TAG_NAME, INFECTED
+                                "s3:ExistingObjectTag/" + SCAN_TAG_NAME, INFECTED.name()
                         )
                 ))
                 .build();
