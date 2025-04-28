@@ -1,5 +1,7 @@
 package cloud.cleo.clamav.cdk;
 
+import cloud.cleo.clamav.ScanStatus;
+import static cloud.cleo.clamav.ScanStatus.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -10,6 +12,9 @@ import software.amazon.awscdk.Stack;
 import software.amazon.awscdk.StackProps;
 import software.amazon.awscdk.services.ecr.assets.DockerImageAsset;
 import software.amazon.awscdk.services.ecr.assets.Platform;
+import software.amazon.awscdk.services.iam.AnyPrincipal;
+import software.amazon.awscdk.services.iam.Effect;
+import software.amazon.awscdk.services.iam.PolicyStatement;
 import software.amazon.awscdk.services.lambda.Architecture;
 import software.amazon.awscdk.services.lambda.DockerImageCode;
 import software.amazon.awscdk.services.lambda.DockerImageFunction;
@@ -33,16 +38,6 @@ public class ClamavLambdaStack extends Stack {
     public ClamavLambdaStack(final Construct scope, final String id, final StackProps props) {
         super(scope, id, props);
 
-        // Take ONLY_TAG_INFECTED from context (workflow variable) and prep for passing to Lambda ENV
-        String onlyTagInfectedEnv = (String) this.getNode().tryGetContext("ONLY_TAG_INFECTED");
-        if (onlyTagInfectedEnv == null || onlyTagInfectedEnv.isBlank()) {
-            onlyTagInfectedEnv = "true"; // Default if missing
-        }
-
-        boolean runningInCloudShell = isCloudShell();
-        Architecture lambdaArchitecture = runningInCloudShell ? Architecture.X86_64 : Architecture.ARM_64;
-        Platform dockerPlatform = runningInCloudShell ? Platform.LINUX_AMD64 : Platform.LINUX_ARM64;
-
         // Retrieve a comma-separated list of bucket names from context.
         // For example: cdk deploy --context bucketNames="bucket1,bucket2,bucket3"
         String bucketNamesContext = (String) this.getNode().tryGetContext("bucketNames");
@@ -64,7 +59,7 @@ public class ClamavLambdaStack extends Stack {
         // then copies the produced JAR into the asset output so that the Dockerfile COPY
         // instruction (which expects target/lambda.jar) works properly.
         DockerImageAsset imageAsset = DockerImageAsset.Builder.create(this, "ClamavLambdaImage")
-                .platform(dockerPlatform)
+                .platform(isCloudShell() ? Platform.LINUX_AMD64 : Platform.LINUX_ARM64)
                 .directory(".")
                 .build();
 
@@ -74,7 +69,7 @@ public class ClamavLambdaStack extends Stack {
                         EcrImageCodeProps.builder().tagOrDigest(imageAsset.getImageTag()).build()))
                 //
                 // We use ARM because its cheaper for CPU bound executions like CLamAV scanning
-                .architecture(lambdaArchitecture)
+                .architecture(isCloudShell() ? Architecture.X86_64 : Architecture.ARM_64)
                 //
                 // This seems fine for scanning 100MB files or less.  Increasing will not yield much faster scans, jut cost you more
                 // 3009 gives you 3 VCPU vs <3009 which drops you to 2 VCPU
@@ -89,7 +84,8 @@ public class ClamavLambdaStack extends Stack {
                 .functionName(PRIMARY_LAMBDA_NAME)
                 .description("Scans S3 files based on ObjectCreate events")
                 .logRetention(RetentionDays.ONE_MONTH) // Don't let the logs hang around forever
-                .environment(Map.of("ONLY_TAG_INFECTED", onlyTagInfectedEnv))
+                // Ensure the Lambda also gets the ENV flag
+                .environment(Map.of("ONLY_TAG_INFECTED", ONLY_TAG_INFECTED.toString()))
                 .build();
 
         // For each bucket passed via CLI:
@@ -102,14 +98,70 @@ public class ClamavLambdaStack extends Stack {
 
             // Add the Lambda function as an event target for all object created events.
             bucket.addEventNotification(EventType.OBJECT_CREATED, new LambdaDestination(lambdaFunction));
+
+            // Apply the appropiate bucket policy based on ONLY_TAG_INFECTED
+            if (ONLY_TAG_INFECTED) {
+                bucket.addToResourcePolicy(getBucketPolicyDenyInfectedOnly(bucket));
+            } else {
+                bucket.addToResourcePolicy(getBucketPolicyDeny(bucket));
+            }
         }
 
     }
 
     /**
-     * Detect if using CloudShell which means we need x86.
-     * 
-     * @return 
+     * Bucket Policy for just denying files marked INFECTED. This is used when ONLY_TAG_INFECTED is true.
+     *
+     * @param bucket
+     * @return
+     */
+    private PolicyStatement getBucketPolicyDenyInfectedOnly(IBucket bucket) {
+        return PolicyStatement.Builder.create()
+                .sid("DenyReadIfInfected")
+                .effect(Effect.DENY)
+                .principals(List.of(new AnyPrincipal()))
+                .actions(List.of("s3:GetObject"))
+                .resources(List.of(bucket.arnForObjects("*")))
+                .conditions(Map.of(
+                        "StringEquals", Map.of(
+                                "s3:ExistingObjectTag/" + SCAN_TAG_NAME, INFECTED
+                        )
+                ))
+                .build();
+    }
+
+    /**
+     * Bucket Policy for denying anything but CLEAN. This is used when ONLY_TAG_INFECTED is false.
+     *
+     * @param bucket
+     * @return
+     */
+    private PolicyStatement getBucketPolicyDeny(IBucket bucket) {
+
+        // All statuses except clean
+        List<String> denyStatuses = java.util.Arrays.stream(ScanStatus.values())
+                .filter(status -> status != CLEAN)
+                .map(Enum::name)
+                .toList();
+
+        return PolicyStatement.Builder.create()
+                .sid("DenyReadIfScanning")
+                .effect(Effect.DENY)
+                .principals(List.of(new AnyPrincipal()))
+                .actions(List.of("s3:GetObject"))
+                .resources(List.of(bucket.arnForObjects("*")))
+                .conditions(Map.of(
+                        "StringEquals", Map.of(
+                                "s3:ExistingObjectTag/" + SCAN_TAG_NAME, denyStatuses
+                        )
+                ))
+                .build();
+    }
+
+    /**
+     * Detect if using CloudShell which means we need x86 architecture/platform.
+     *
+     * @return
      */
     private static boolean isCloudShell() {
         String toolingAgent = System.getenv("AWS_TOOLING_USER_AGENT");

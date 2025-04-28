@@ -95,10 +95,11 @@ jobs:
     
     - name: Deploy CDK Stack
       working-directory: ./cdk
+      env:
+        ONLY_TAG_INFECTED: ${{ vars.ONLY_TAG_INFECTED }}
       run: > 
         cdk deploy --require-approval=never --ci=true 
-        --context bucketNames="${{ env.BUCKET_NAMES }}" 
-        --context ONLY_TAG_INFECTED="${{ vars.ONLY_TAG_INFECTED }}"
+        --context bucketNames="${{ env.BUCKET_NAMES }}"
       
     - name: Run Virus Scan Integration Tests (if VALIDATION_BUCKET is set)
       if: ${{ vars.VALIDATION_BUCKET != '' }}

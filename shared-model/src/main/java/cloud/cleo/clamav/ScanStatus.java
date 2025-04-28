@@ -36,7 +36,7 @@ public enum ScanStatus {
      * react to infected files. Otherwise when false tagging events will fire on all statuses which may not be what you
      * want. If you want to deny access via bucket policy while scanning, then this will need to be false.
      */
-    public final static boolean ONLY_TAG_INFECTED;
+    public final static Boolean  ONLY_TAG_INFECTED;
 
     static {
         boolean onlyTagInfected = true; // Default to true
