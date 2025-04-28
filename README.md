@@ -75,7 +75,7 @@ brew install maven
 brew install --cask docker
 ```
 
-Assuming you have all requried software, CDK is bootstraped and you have valid AWS Keys set then:
+Assuming you have all requried software, CDK is bootstrapped and you have valid AWS Keys set then:
 
 ```bash
 # Clone Repo
@@ -90,11 +90,14 @@ mvn install
 # Change to CDK directory for deployment
 cd cdk
 
-# Set whether you want to tag only INFECTED files only or set tag on all files (SCANING,CLEAN,ERROR,INFECTED,etc.)
+# Set whether you want to tag only INFECTED files only or set tag on all files (SCANNING,CLEAN,ERROR,INFECTED,etc.)
 export ONLY_TAG_INFECTED=true
 
+# Ensure cdk is bootstrapped and current (can skip if you know CDK is recently bootstrapped)
+cdk bootstrap
+
 # Deploy and set which buckets will be scanned
-#  You can also add --context addBucketPolicy="true", but be carefull if you have an existing policy, it will overwrite it.
+#  You can also add --context addBucketPolicy="true", but be careful if you have an existing policy, it will overwrite it.
 #  You can also deploy with no bucket names, just to deploy Lambda Container if you want to wire up S3 yourself (just "cdk deploy")
 cdk deploy --context bucketNames="bucketName1,bucketName2"
 ```
@@ -104,7 +107,7 @@ cdk deploy --context bucketNames="bucketName1,bucketName2"
 Easiest method to get deployed since this is a clean environment that will have AWS Creds all loaded assuming you have a role that 
 grants all the needed permissions (Administrator or Power User).  If you just want to test it out quickly this is will get you going fast and easy! 
 Since its quite more complicated to get CloudShell to build arm64, this will build everything for x86.  The CDK code detects CloudShell and then 
-targets x86 platform.  For production you'll like integrate into your own pipeline strategy or use GitHub Workflow which can build arm64 easily.
+targets x86 platform.  For production you'll likely integrate into your own pipeline strategy or use a GitHub Workflow which can build arm64 easily.
 
 ```bash
 # Clone Repo
@@ -122,11 +125,14 @@ mvn install
 # Change to CDK directory for deployment
 cd cdk
 
-# Set whether you want to tag only INFECTED files only or set tag on all files (SCANING,CLEAN,ERROR,INFECTED,etc.)
+# Set whether you want to tag only INFECTED files only or set tag on all files (SCANNING,CLEAN,ERROR,INFECTED,etc.)
 export ONLY_TAG_INFECTED=true
 
+# Ensure cdk is bootstrapped and current (can skip if you know CDK is recently bootstrapped)
+cdk bootstrap
+
 # Deploy and set which buckets will be scanned
-#  You can also add --context addBucketPolicy="true", but be carefull if you have an existing policy, it will overwrite it.
+#  You can also add --context addBucketPolicy="true", but be careful if you have an existing policy, it will overwrite it.
 #  You can also deploy with no bucket names, just to deploy Lambda Container if you want to wire up S3 yourself (just "cdk deploy")
 cdk deploy --context bucketNames="bucketName1,bucketName2"
 ```
@@ -163,15 +169,15 @@ If you are going to use [Access Key and Secret](https://repost.aws/knowledge-cen
 - Create a Secret named **AWS_SECRET_ACCESS_KEY** and set to the Secret Access Key
 
 The workflow is designed for a matrix job based on [environments](https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/using-environments-for-deployment).  Each environemnt should 
-generally represent a unique deployment within a region and/or account.  We use seperate accounts for stagging versus production.
+generally represent a unique deployment within a region and/or account.  We use seperate accounts for staging versus production.
 
 - stage-us-east
-  - This is stagging account used for testing
+  - This is staging account used for testing
   - We set VALIDATION_BUCKET for this environment so tests run to validate the resulting container detects infected files correctly
     - Since the container has all the virus definitions built in, we want to validate it works properly before releasing into production.
 - prod-us-east
   - For this environment we set a [wait timer](https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-deployments/managing-environments-for-deployment#wait-timer) of 30 mins
-    - This delays running and deploying into production so if the stage workfkow (namely the tests fail) the container is not deployed into production
+    - This delays running and deploying into production so if the stage workflow (namely the tests fail) the container is not deployed into production
     - You could also create protection rules or similar so someone has to approve this deploy vs the simple wait
 
 ```yaml
@@ -180,7 +186,7 @@ jobs:
     strategy:
       matrix:
         # Define which environments you want to deploy
-        # Environments are setup in GutHub
+        # Environments are setup in GitHub
         environment: [ stage-us-east, prod-us-east ]
 ```
 
@@ -200,12 +206,12 @@ The general steps are:
   - Setup either OIDC or Access Keys as described above.
 * Setup [variables](https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/store-information-in-variables#creating-configuration-variables-for-an-environment) for each environment.
   - **AWS_REGION** to deploy to.  Defaults to **us-east-1** if not set.
-  - **ADD_BUCKET_POLICY** to have CDK set an appropiate Bucket Policy to deny Reads on INFECTED files (defaults to false).  Be careful by setting to true because if you have an existing policy it will be replaced.
-  - **S3_BUCKET_NAMES** is a comma seperated list of S3 bucket names to perform scanning on
-    - CDK deployment will allow the Container Lambda to Read Object and write tags and subscrive to Obect Create events to trigger the scan
+  - **ADD_BUCKET_POLICY** to have CDK set an appropriate Bucket Policy to deny Reads on INFECTED files (defaults to false).  Be careful by setting to true because if you have an existing policy it will be replaced.
+  - **S3_BUCKET_NAMES** is a comma separated list of S3 bucket names to perform scanning on
+    - CDK deployment will allow the Container Lambda to Read Object and write tags and subscribe to Obect Create events to trigger the scan
   - Set **ONLY_TAG_INFECTED** to "true" or "false"
     - When true, only infected files will get tagged with INFECTED.  This is the default if you don't set this.
-    - When false tagging is applied immedaitely as files are processed
+    - When false tagging is applied immediately as files are processed
         - SCANNING tag is set immediately
         - Then a terminating tag is applied after scanning is done (or errors) -> CLEAN,INFECTED,ERROR
   - If you set **VALIDATION_BUCKET** to an S3 bucket name this indicates you want to run validation tests for this environment
@@ -261,7 +267,7 @@ private PolicyStatement getBucketPolicyDenyInfectedOnly(IBucket bucket) {
     }
 ```
 
-If you want to look at all tags (**ONLY_TAG_INFECTED** = false) and deny download while scanning is in progres and essentially only allow CLEAN files to download then something like this might apply:
+If you want to look at all tags (**ONLY_TAG_INFECTED** = false) and deny download while scanning is in progress and essentially only allow CLEAN files to download then something like this might apply:
 
 ```json
 {

@@ -32,4 +32,4 @@ sudo npm install -g aws-cdk
 echo "Verifying CDK Version..."
 cdk version
 
-echo "✅ Environment ready. You can now run 'cd cdk' and 'mvn install' and 'cdk deploy ...'"
+echo "✅ Environment ready. You can now run 'mvn install'"
