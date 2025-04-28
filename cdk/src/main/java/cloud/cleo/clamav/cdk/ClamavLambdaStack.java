@@ -39,6 +39,12 @@ public class ClamavLambdaStack extends Stack {
     public ClamavLambdaStack(final Construct scope, final String id, final StackProps props) {
         super(scope, id, props);
 
+        Boolean addBucketPolicyContext = (Boolean) this.getNode().tryGetContext("addBucketPolicy");
+        boolean addBucketPolicy = (addBucketPolicyContext != null && addBucketPolicyContext);
+
+        String validationBucket = System.getenv("VALIDATION_BUCKET") != null
+                ? !System.getenv("VALIDATION_BUCKET").isBlank() ? System.getenv("VALIDATION_BUCKET") : null : null;
+
         // Retrieve a comma-separated list of bucket names from context.
         // For example: cdk deploy --context bucketNames="bucket1,bucket2,bucket3"
         String bucketNamesContext = (String) this.getNode().tryGetContext("bucketNames");
@@ -52,16 +58,21 @@ public class ClamavLambdaStack extends Stack {
                 IBucket bucket = Bucket.fromBucketName(this, "SourceBucket" + count, trimmedName);
                 buckets.add(bucket);
 
-                // Apply a bucket Policy to the Bucket
-                BucketPolicy policy = BucketPolicy.Builder.create(this, "BucketPolicy" + count)
-                        .bucket(bucket)
-                        .build();
+                if (addBucketPolicy) {
+                    // Never apply policy to Validation bucket if defined
+                    if (validationBucket == null || !validationBucket.equals(bucket.getBucketName())) {
+                        // Apply a bucket Policy to the Bucket
+                        BucketPolicy policy = BucketPolicy.Builder.create(this, "BucketPolicy" + count)
+                                .bucket(bucket)
+                                .build();
 
-                // Add Appropiate policy
-                if (ONLY_TAG_INFECTED) {
-                    policy.getDocument().addStatements(getBucketPolicyDenyInfectedOnly(bucket));
-                } else {
-                    policy.getDocument().addStatements(getBucketPolicyDeny(bucket));
+                        // Add Appropiate policy
+                        if (ONLY_TAG_INFECTED) {
+                            policy.getDocument().addStatements(getBucketPolicyDenyInfectedOnly(bucket));
+                        } else {
+                            policy.getDocument().addStatements(getBucketPolicyDeny(bucket));
+                        }
+                    }
                 }
 
                 count++;
