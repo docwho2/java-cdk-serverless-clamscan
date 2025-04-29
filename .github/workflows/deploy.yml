@@ -127,7 +127,7 @@ jobs:
         # Get previous version (second to last version)
         PREV_VERSION=$(aws lambda list-versions-by-function \
             --function-name "$FUNCTION_NAME" \
-            --query 'Versions[?Version!=\"$LATEST\"][-2].Version' \
+            --query 'Versions[-2].Version' \
             --output text)
 
         echo "Repointing alias $ALIAS_NAME to version $PREV_VERSION"
