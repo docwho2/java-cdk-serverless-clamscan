@@ -8,10 +8,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeAll;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
-
 import java.time.Duration;
 import java.util.List;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.AfterAll;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
@@ -47,8 +45,8 @@ public class VirusScanValidationTest {
     }
 
     /**
-     * When all tagging is enabled, right before scanning takes place, it should be in SCANNING state, so this is a test
-     * is forced at Order(1) to ensure it tests this first. Scanning takes at least 20 seconds, so this is valid.
+     * When all tagging is enabled, right before scanning takes place, it should be in SCANNING state, so this test is
+     * forced at Order(1) to ensure it tests this first.
      *
      * @throws InterruptedException
      */
@@ -58,7 +56,8 @@ public class VirusScanValidationTest {
         assumeTrue(!ONLY_TAG_INFECTED, "Skipping because ONLY_TAG_INFECTED is true");
 
         retriggerScan(INFECTED_KEY);
-        waitForTagValue(INFECTED_KEY, ScanStatus.SCANNING);
+        // Tag should be applied pretty fast as soon as Lambda kicks off
+        waitForTagValue(INFECTED_KEY, ScanStatus.SCANNING, Duration.ofSeconds(30));
     }
 
     /**
@@ -74,7 +73,8 @@ public class VirusScanValidationTest {
                 // If Test 1 executed, then no need to retrigger
                 retriggerScan(INFECTED_KEY);
             }
-            waitForTagValue(INFECTED_KEY, ScanStatus.INFECTED);
+            // Need to wait for scan to complete, which sometimes can take over a minute
+            waitForTagValue(INFECTED_KEY, ScanStatus.INFECTED, Duration.ofMinutes(2));
         } finally {
             clearTags(INFECTED_KEY);
         }
@@ -90,7 +90,8 @@ public class VirusScanValidationTest {
     public void validateScanOfOversizedFile() throws InterruptedException {
         try {
             retriggerScan(OVERSIZED_KEY);
-            waitForTagValue(OVERSIZED_KEY, ScanStatus.FILE_SIZE_EXCEEED);
+            // Should be detected before scanning on the S3 Head operation
+            waitForTagValue(OVERSIZED_KEY, ScanStatus.FILE_SIZE_EXCEEED, Duration.ofSeconds(30));
         } finally {
             clearTags(OVERSIZED_KEY);
         }
@@ -107,18 +108,19 @@ public class VirusScanValidationTest {
     }
 
     /**
-     * Wait up to a minute for scan tag to have an expected value.
+     * Wait up for scan tag to have an expected value.
      *
      * @param key
      * @param expectedValue
+     * @param timeout
      * @throws InterruptedException
      */
-    private void waitForTagValue(String key, ScanStatus expectedValue) throws InterruptedException {
-        long timeoutMillis = Duration.ofSeconds(60).toMillis();
+    private void waitForTagValue(String key, ScanStatus expectedValue, Duration timeout) throws InterruptedException {
+        long timeoutMillis = timeout.toMillis();
         long sleepMillis = 5000;
         long start = System.currentTimeMillis();
 
-        while (System.currentTimeMillis() - start < timeoutMillis) {
+        while (System.currentTimeMillis() - start <= timeoutMillis) {
             List<Tag> tags = getTags(key);
             String actual = tags.stream()
                     .filter(tag -> SCAN_TAG_NAME.equals(tag.key()))

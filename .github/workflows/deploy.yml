@@ -91,7 +91,7 @@ jobs:
   
     - name: Ensure CDK is bootstraped and up to date
       working-directory: ./cdk
-      run: cdk bootstrap --ci=true -c accountId=${AWS_ACCOUNT_ID} aws://${AWS_ACCOUNT_ID}/${{ vars.AWS_REGION || 'us-east-1' }}
+      run: cdk bootstrap --ci=true aws://${AWS_ACCOUNT_ID}/${{ vars.AWS_REGION || 'us-east-1' }}
     
     - name: Deploy CDK Stack
       working-directory: ./cdk
