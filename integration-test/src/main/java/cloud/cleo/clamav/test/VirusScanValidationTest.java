@@ -42,7 +42,7 @@ public class VirusScanValidationTest {
         if (BUCKET_NAME == null || BUCKET_NAME.isEmpty()) {
             throw new IllegalStateException("VALIDATION_BUCKET environment variable must be set.");
         }
-        //throw new AssertionError("Abort to test rollback");
+        throw new AssertionError("Abort to test rollback");
     }
 
     /**
