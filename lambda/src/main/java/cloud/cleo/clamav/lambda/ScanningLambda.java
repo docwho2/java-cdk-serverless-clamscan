@@ -16,6 +16,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
@@ -59,9 +60,9 @@ public class ScanningLambda implements RequestHandler<S3EventNotification, Void>
                     setScanTagStatus(bucket, key, ScanStatus.FILE_SIZE_EXCEEED).join();
                     return;
                 }
-            } catch (Exception e) {
-                log.error("Failed to get object metadata for key {}: {}", key, e.getMessage());
-                return;
+            } catch (CompletionException e) {
+                log.error("Transient S3 failure, triggering retry", e);
+                throw e; // must throw to allow retry
             }
 
             if (!ONLY_TAG_INFECTED) {
@@ -79,9 +80,9 @@ public class ScanningLambda implements RequestHandler<S3EventNotification, Void>
                         .build();
                 s3Client.getObject(getObjectRequest, localFilePath)
                         .join(); // Wait for completion before proceeding
-            } catch (Exception e) {
-                log.error("Error downloading file: {}", e.getMessage());
-                return;
+            } catch (CompletionException e) {
+                log.error("Transient S3 failure, triggering retry", e);
+                throw e; // must throw to allow retry
             }
 
             // Run ClamAV (clamscan) on the downloaded file.
@@ -111,7 +112,7 @@ public class ScanningLambda implements RequestHandler<S3EventNotification, Void>
                 if (!finished) {
                     process.destroyForcibly();
                     log.error("clamscan process timed out!");
-                    if (! ONLY_TAG_INFECTED ) {
+                    if (!ONLY_TAG_INFECTED) {
                         setScanTagStatus(bucket, key, ScanStatus.ERROR).join(); // Wait for result before exiting
                     }
                     return;
@@ -134,6 +135,9 @@ public class ScanningLambda implements RequestHandler<S3EventNotification, Void>
             } catch (IOException | InterruptedException e) {
                 log.error("Error running clamscan: ", e);
                 return;
+            } catch (CompletionException e) {
+                log.error("Transient S3 failure, triggering retry", e);
+                throw e; // to trigger retry
             } finally {
                 try {
                     Files.deleteIfExists(localFilePath);
@@ -149,7 +153,12 @@ public class ScanningLambda implements RequestHandler<S3EventNotification, Void>
             }
 
             // Update the S3 object's tagging with the scan result.
-            setScanTagStatus(bucket, key, status).join(); // Wait for result before exiting
+            try {
+                setScanTagStatus(bucket, key, status).join(); // Wait for result before exiting
+            } catch (CompletionException e) {
+                log.error("Failed to tag object with final scan status: {}", status, e);
+                throw e; // to trigger retry
+            }
 
         });
         return null;
