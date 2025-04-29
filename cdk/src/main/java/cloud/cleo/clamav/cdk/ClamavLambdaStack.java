@@ -8,6 +8,7 @@ import java.util.Map;
 import software.amazon.awscdk.App;
 import software.amazon.awscdk.CfnOutput;
 import software.amazon.awscdk.Duration;
+import software.amazon.awscdk.RemovalPolicy;
 import software.amazon.awscdk.Size;
 import software.amazon.awscdk.Stack;
 import software.amazon.awscdk.StackProps;
@@ -115,10 +116,13 @@ public class ClamavLambdaStack extends Stack {
                 .environment(Map.of("ONLY_TAG_INFECTED", ONLY_TAG_INFECTED.toString()))
                 .build();
 
-        // Obtain version so we can aliad it
+        // Obtain version so we can alias it
         Version lambdaVersion = lambdaFunction.getCurrentVersion();
+        
+        // Retain so we can rollback
+        lambdaVersion.applyRemovalPolicy(RemovalPolicy.RETAIN);
 
-        // Create live alias so we can roll back if necessary
+        // Create live alias
         Alias lambdaAlias = Alias.Builder.create(this, "ClamavLambdaAlias")
                 .aliasName("live")
                 .version(lambdaVersion)
