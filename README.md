@@ -65,7 +65,7 @@ The inspiration for this project came from reviewing the [AWS Labs cdk-serverles
 
 ---
 
-## 🚀 CLI Build & Deploy (ARM Platform Mac)
+## 🚀 CLI Build & Deploy (Mac / ARM Platform)
 
 If you have [brew](https://brew.sh) installed (highly recommended) then:
 ```bash
