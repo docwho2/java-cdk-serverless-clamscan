@@ -47,7 +47,7 @@ public class VirusScanValidationTest {
         clearTags(INFECTED_KEY);
         clearTags(OVERSIZED_KEY);
         
-        throw new AssertionError("Testing rollback");
+        //throw new AssertionError("Testing rollback");
     }
 
     /**
