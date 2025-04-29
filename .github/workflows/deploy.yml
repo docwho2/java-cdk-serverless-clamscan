@@ -105,6 +105,7 @@ jobs:
       
     - name: Run Virus Scan Integration Tests (if VALIDATION_BUCKET is set)
       if: ${{ vars.VALIDATION_BUCKET != '' }}
+      id: scan-tests
       working-directory: ./integration-test
       env:
         VALIDATION_BUCKET: ${{ vars.VALIDATION_BUCKET }}
@@ -114,3 +115,24 @@ jobs:
         sleep 30
         echo "Running Virus Scan Validation Tests..."
         mvn --batch-mode --no-transfer-progress exec:java
+        
+    - name: Rollback Lambda Alias if Tests Fail
+      if: failure() && steps.scan-tests.outcome == 'failure'
+      run: |
+        echo "Rolling back Lambda alias to previous version..."
+
+        FUNCTION_NAME="ClamavLambdaFunction"
+        ALIAS_NAME="live"
+
+        # Get previous version (second to last version)
+        PREV_VERSION=$(aws lambda list-versions-by-function \
+            --function-name "$FUNCTION_NAME" \
+            --query 'Versions[?Version!=\"$LATEST\"][-2].Version' \
+            --output text)
+
+        echo "Repointing alias $ALIAS_NAME to version $PREV_VERSION"
+
+        aws lambda update-alias \
+            --function-name "$FUNCTION_NAME" \
+            --name "$ALIAS_NAME" \
+            --function-version "$PREV_VERSION"

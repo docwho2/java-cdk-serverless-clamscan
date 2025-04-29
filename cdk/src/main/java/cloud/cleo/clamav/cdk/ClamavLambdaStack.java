@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import software.amazon.awscdk.App;
+import software.amazon.awscdk.CfnOutput;
 import software.amazon.awscdk.Duration;
 import software.amazon.awscdk.Size;
 import software.amazon.awscdk.Stack;
@@ -15,10 +16,12 @@ import software.amazon.awscdk.services.ecr.assets.Platform;
 import software.amazon.awscdk.services.iam.AnyPrincipal;
 import software.amazon.awscdk.services.iam.Effect;
 import software.amazon.awscdk.services.iam.PolicyStatement;
+import software.amazon.awscdk.services.lambda.Alias;
 import software.amazon.awscdk.services.lambda.Architecture;
 import software.amazon.awscdk.services.lambda.DockerImageCode;
 import software.amazon.awscdk.services.lambda.DockerImageFunction;
 import software.amazon.awscdk.services.lambda.EcrImageCodeProps;
+import software.amazon.awscdk.services.lambda.Version;
 import software.amazon.awscdk.services.logs.RetentionDays;
 import software.amazon.awscdk.services.s3.Bucket;
 import software.amazon.awscdk.services.s3.BucketPolicy;
@@ -112,6 +115,13 @@ public class ClamavLambdaStack extends Stack {
                 .environment(Map.of("ONLY_TAG_INFECTED", ONLY_TAG_INFECTED.toString()))
                 .build();
 
+        Version lambdaVersion = lambdaFunction.getCurrentVersion();
+
+        Alias lambdaAlias = Alias.Builder.create(this, "ClamavLambdaAlias")
+                .aliasName("live")
+                .version(lambdaVersion)
+                .build();
+
         // For each bucket passed via CLI:
         for (IBucket bucket : buckets) {
             // Grant read permissions (to download objects into /tmp to perform scans).
@@ -121,23 +131,23 @@ public class ClamavLambdaStack extends Stack {
             bucket.grantWrite(lambdaFunction, null, List.of("s3:PutObjectTagging"));
 
             // Add the Lambda function as an event target for all object created events.
-            bucket.addEventNotification(EventType.OBJECT_CREATED, new LambdaDestination(lambdaFunction));
+            bucket.addEventNotification(EventType.OBJECT_CREATED, new LambdaDestination(lambdaAlias));
         }
 
         // Lambda Function Name Output
-        software.amazon.awscdk.CfnOutput.Builder.create(this, getStackName() + "-LambdaName")
+        CfnOutput.Builder.create(this, getStackName() + "-LambdaName")
                 .description("Lambda Function Name for Virus Scanning")
                 .value(lambdaFunction.getFunctionName())
                 .build();
 
         // Lambda Function ARN Output
-        software.amazon.awscdk.CfnOutput.Builder.create(this, getStackName() + "-LambdaArn")
+        CfnOutput.Builder.create(this, getStackName() + "-LambdaArn")
                 .description("Lambda Function ARN for Virus Scanning")
                 .value(lambdaFunction.getFunctionArn())
                 // Export in case someone wants to wire stuff up in another stack
                 .exportName("ClamavLambdaFunctionArn")
                 .build();
-
+        
     }
 
     /**
