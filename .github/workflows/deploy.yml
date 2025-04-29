@@ -71,6 +71,7 @@ jobs:
         mask-aws-account-id: true
     
     - name: Debug OIDC Token
+      if: ${{ vars.DEBUG_OIDC == 'true' }} # Set DEBUG_OIDC=true as a GitHub Actions variable to enable this step
       shell: bash
       run: |
         echo "Fetching OIDC token..."
