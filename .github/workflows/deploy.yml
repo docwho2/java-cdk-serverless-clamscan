@@ -121,8 +121,8 @@ jobs:
       run: |
         echo "Rolling back Lambda alias to previous version..."
 
-        FUNCTION_NAME=$(mvn --quiet exec:java -Dexec.args=LAMBDA_NAME)
-        ALIAS_NAME=$(mvn --quiet exec:java -Dexec.args=LAMBDA_ALIAS_NAME)
+        FUNCTION_NAME=$(cd shared-model; mvn --quiet exec:java -Dexec.args=LAMBDA_NAME)
+        ALIAS_NAME=$(cd shared-model; mvn --quiet exec:java -Dexec.args=LAMBDA_ALIAS_NAME)
 
         # Get previous version (second to last version)
         PREV_VERSION=$(aws lambda list-versions-by-function \

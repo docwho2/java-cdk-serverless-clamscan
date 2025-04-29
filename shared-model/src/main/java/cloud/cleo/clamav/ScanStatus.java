@@ -65,7 +65,7 @@ public enum ScanStatus {
 
     // Function Name for the Lambda
     public static final String LAMBDA_ALIAS_NAME = "live";
-
+    
     public static void main(String[] args) {
         if (args.length != 1) {
             System.err.println("Usage: ScanStatus <CONSTANT_NAME>");
