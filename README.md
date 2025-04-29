@@ -217,7 +217,7 @@ The general steps are:
   - If you set **VALIDATION_BUCKET** to an S3 bucket name this indicates you want to run validation tests for this environment
     - The bucket is added to S3_BUCKET_NAMES passed to the CDK deploy so that events for the test bucket also trigger scans
     - This requires manual setup of the validation bucket and placing files in the bucket to coordiate with the [testing code](integration-test/src/main/java/cloud/cleo/clamav/test/VirusScanValidationTest.java) 
-
+    - If validation fails the Lambda is rolled back to the prior version (which would use the last container that is known to work)
 
 ---
 
