@@ -149,7 +149,7 @@ public class ClamavLambdaStack extends Stack {
         // Lambda Function ARN Output
         CfnOutput.Builder.create(this, getStackName() + "-LambdaArn")
                 .description("Lambda Function ARN for Virus Scanning")
-                .value(lambdaFunction.getFunctionArn())
+                .value(lambdaAlias.getFunctionArn())
                 // Export in case someone wants to wire stuff up in another stack
                 .exportName("ClamavLambdaFunctionArn")
                 .build();
