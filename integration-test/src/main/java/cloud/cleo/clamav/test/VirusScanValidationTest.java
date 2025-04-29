@@ -42,6 +42,10 @@ public class VirusScanValidationTest {
         if (BUCKET_NAME == null || BUCKET_NAME.isEmpty()) {
             throw new IllegalStateException("VALIDATION_BUCKET environment variable must be set.");
         }
+
+        // Ensure all tags are cleared before testing starts
+        clearTags(INFECTED_KEY);
+        clearTags(OVERSIZED_KEY);
     }
 
     /**
@@ -68,17 +72,12 @@ public class VirusScanValidationTest {
     @Test
     @Order(2)
     public void validateScanOfKnownInfectedFile() throws InterruptedException {
-        
-        try {
-            if (ONLY_TAG_INFECTED) {
-                // If Test 1 executed, then no need to retrigger
-                retriggerScan(INFECTED_KEY);
-            }
-            // Need to wait for scan to complete, which sometimes can take over a minute
-            waitForTagValue(INFECTED_KEY, ScanStatus.INFECTED, Duration.ofMinutes(2));
-        } finally {
-            clearTags(INFECTED_KEY);
+        if (ONLY_TAG_INFECTED) {
+            // If Test 1 executed, then no need to retrigger
+            retriggerScan(INFECTED_KEY);
         }
+        // Need to wait for scan to complete, which sometimes can take over a minute
+        waitForTagValue(INFECTED_KEY, ScanStatus.INFECTED, Duration.ofMinutes(2));
     }
 
     /**
@@ -89,13 +88,9 @@ public class VirusScanValidationTest {
     @Test
     @Order(3)
     public void validateScanOfOversizedFile() throws InterruptedException {
-        try {
-            retriggerScan(OVERSIZED_KEY);
-            // Should be detected before scanning on the S3 Head operation
-            waitForTagValue(OVERSIZED_KEY, ScanStatus.FILE_SIZE_EXCEEED, Duration.ofSeconds(30));
-        } finally {
-            clearTags(OVERSIZED_KEY);
-        }
+        retriggerScan(OVERSIZED_KEY);
+        // Should be detected before scanning on the S3 Head operation
+        waitForTagValue(OVERSIZED_KEY, ScanStatus.FILE_SIZE_EXCEEED, Duration.ofSeconds(30));
     }
 
     /**
@@ -116,7 +111,7 @@ public class VirusScanValidationTest {
      * @param timeout
      * @throws InterruptedException
      */
-    private void waitForTagValue(String key, ScanStatus expectedValue, Duration timeout) throws InterruptedException {
+    private static void waitForTagValue(String key, ScanStatus expectedValue, Duration timeout) throws InterruptedException {
         long timeoutMillis = timeout.toMillis();
         long sleepMillis = 5000;
         long start = System.currentTimeMillis();
@@ -146,7 +141,7 @@ public class VirusScanValidationTest {
      * @param key
      * @return
      */
-    private List<Tag> getTags(String key) {
+    private static List<Tag> getTags(String key) {
         GetObjectTaggingResponse response = s3.getObjectTagging(GetObjectTaggingRequest.builder()
                 .bucket(BUCKET_NAME)
                 .key(key)
@@ -159,7 +154,7 @@ public class VirusScanValidationTest {
      *
      * @param key
      */
-    private void clearTags(String key) {
+    private static void clearTags(String key) {
         s3.deleteObjectTagging(DeleteObjectTaggingRequest.builder()
                 .bucket(BUCKET_NAME)
                 .key(key)
@@ -171,7 +166,7 @@ public class VirusScanValidationTest {
      *
      * @param key
      */
-    private void retriggerScan(String key) {
+    private static void retriggerScan(String key) {
         CopyObjectRequest copyRequest = CopyObjectRequest.builder()
                 .sourceBucket(BUCKET_NAME)
                 .sourceKey(key)

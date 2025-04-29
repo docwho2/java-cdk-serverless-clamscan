@@ -125,6 +125,7 @@ public class ClamavLambdaStack extends Stack {
         // Create live alias
         Alias lambdaAlias = Alias.Builder.create(this, "ClamavLambdaAlias")
                 .aliasName("live")
+                .description("Lambda Alias to support rollback")
                 .version(lambdaVersion)
                 .build();
 
