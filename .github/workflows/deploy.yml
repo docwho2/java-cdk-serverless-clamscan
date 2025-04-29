@@ -70,6 +70,13 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         mask-aws-account-id: true
     
+    - name: Debug OIDC Token
+      shell: bash
+      run: |
+        echo "Fetching OIDC token..."
+        token=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL")
+        echo "$token" | cut -d '.' -f2 | base64 -d | jq
+    
     - name: Add AWS_ACCOUNT_ID to Environment
       run: echo "AWS_ACCOUNT_ID=${{ steps.aws-creds.outputs.aws-account-id }}" >> $GITHUB_ENV
     
