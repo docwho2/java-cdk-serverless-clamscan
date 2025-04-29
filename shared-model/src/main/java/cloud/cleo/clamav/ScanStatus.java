@@ -36,7 +36,7 @@ public enum ScanStatus {
      * react to infected files. Otherwise when false tagging events will fire on all statuses which may not be what you
      * want. If you want to deny access via bucket policy while scanning, then this will need to be false.
      */
-    public final static Boolean  ONLY_TAG_INFECTED;
+    public final static Boolean ONLY_TAG_INFECTED;
 
     static {
         boolean onlyTagInfected = true; // Default to true
@@ -56,7 +56,33 @@ public enum ScanStatus {
 
         ONLY_TAG_INFECTED = onlyTagInfected;
     }
-    
+
     // Max size in bytes to process (100MB is safe given 512MB /tmp in Lambda)
     public final static int MAX_BYTES = 100000000;
+
+    // Function Name for the Lambda
+    public static final String LAMBDA_NAME = "ClamavLambdaFunction";
+
+    // Function Name for the Lambda
+    public static final String LAMBDA_ALIAS_NAME = "live";
+
+    public static void main(String[] args) {
+        if (args.length != 1) {
+            System.err.println("Usage: ScanStatus <CONSTANT_NAME>");
+            System.exit(1);
+        }
+
+        switch (args[0]) {
+            case "LAMBDA_NAME" ->
+                System.out.println(LAMBDA_NAME);
+            case "LAMBDA_ALIAS_NAME" ->
+                System.out.println(LAMBDA_ALIAS_NAME);
+            case "SCAN_TAG_NAME" ->
+                System.out.println(SCAN_TAG_NAME);
+            default -> {
+                System.err.println("Unknown constant: " + args[0]);
+                System.exit(2);
+            }
+        }
+    }
 }
