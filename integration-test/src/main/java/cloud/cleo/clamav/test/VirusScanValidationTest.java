@@ -57,6 +57,7 @@ public class VirusScanValidationTest {
     @Test
     @Order(1)
     public void validateScanningTagSetImmediatelyIfNotOnlyInfected() throws InterruptedException {
+        // This will show as aborted in test results (won't error out, but in reality its a skip)
         assumeTrue(!ONLY_TAG_INFECTED, "Skipping because ONLY_TAG_INFECTED is true");
 
         retriggerScan(INFECTED_KEY);
@@ -73,7 +74,7 @@ public class VirusScanValidationTest {
     @Order(2)
     public void validateScanOfKnownInfectedFile() throws InterruptedException {
         if (ONLY_TAG_INFECTED) {
-            // If Test 1 executed, then no need to retrigger
+            // If SCANNING test was skipped, re-trigger scan here
             retriggerScan(INFECTED_KEY);
         }
         // Need to wait for scan to complete, which sometimes can take over a minute
@@ -94,7 +95,7 @@ public class VirusScanValidationTest {
     }
 
     /**
-     * CLose S3 client at end to shut down threads.
+     * Close S3 client at end to shut down threads.
      */
     @AfterAll
     static void cleanup() {
