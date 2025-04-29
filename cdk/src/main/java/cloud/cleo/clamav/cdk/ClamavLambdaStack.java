@@ -37,8 +37,7 @@ import software.constructs.Construct;
  * @author sjensen
  */
 public class ClamavLambdaStack extends Stack {
-
-    private static final String PRIMARY_LAMBDA_NAME = "ClamavLambdaFunction";
+  
 
     public ClamavLambdaStack(final Construct scope, final String id, final StackProps props) {
         super(scope, id, props);
@@ -92,7 +91,7 @@ public class ClamavLambdaStack extends Stack {
                 .build();
 
         // Create a Docker-based Lambda function using the built image.
-        DockerImageFunction lambdaFunction = DockerImageFunction.Builder.create(this, PRIMARY_LAMBDA_NAME)
+        DockerImageFunction lambdaFunction = DockerImageFunction.Builder.create(this, LAMBDA_NAME)
                 .code(DockerImageCode.fromEcr(imageAsset.getRepository(),
                         EcrImageCodeProps.builder().tagOrDigest(imageAsset.getImageTag()).build()))
                 //
@@ -109,7 +108,7 @@ public class ClamavLambdaStack extends Stack {
                 //
                 // Scans should complete within a minute, so 10 mins is pretty conservative to allow scan to complete
                 .timeout(Duration.minutes(10))
-                .functionName(PRIMARY_LAMBDA_NAME)
+                .functionName(LAMBDA_NAME)
                 .description("Scans S3 files based on ObjectCreate events")
                 .logRetention(RetentionDays.ONE_MONTH) // Don't let the logs hang around forever
                 // Ensure the Lambda also gets the ENV flag
@@ -123,8 +122,8 @@ public class ClamavLambdaStack extends Stack {
         lambdaVersion.applyRemovalPolicy(RemovalPolicy.RETAIN);
 
         // Create live alias
-        Alias lambdaAlias = Alias.Builder.create(this, "ClamavLambdaAlias")
-                .aliasName("live")
+        Alias lambdaAlias = Alias.Builder.create(this, LAMBDA_NAME + "Alias")
+                .aliasName(LAMBDA_ALIAS_NAME)
                 .description("Lambda Alias to support rollback")
                 .version(lambdaVersion)
                 .build();

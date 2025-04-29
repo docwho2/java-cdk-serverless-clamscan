@@ -42,10 +42,12 @@ public class VirusScanValidationTest {
         if (BUCKET_NAME == null || BUCKET_NAME.isEmpty()) {
             throw new IllegalStateException("VALIDATION_BUCKET environment variable must be set.");
         }
-
+        
         // Ensure all tags are cleared before testing starts
         clearTags(INFECTED_KEY);
         clearTags(OVERSIZED_KEY);
+        
+        //throw new AssertionError("Testing rollback");
     }
 
     /**
