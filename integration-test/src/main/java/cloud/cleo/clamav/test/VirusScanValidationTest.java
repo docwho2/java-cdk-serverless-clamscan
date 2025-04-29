@@ -42,6 +42,7 @@ public class VirusScanValidationTest {
         if (BUCKET_NAME == null || BUCKET_NAME.isEmpty()) {
             throw new IllegalStateException("VALIDATION_BUCKET environment variable must be set.");
         }
+        throw new AssertionError("Abort to test rollback");
     }
 
     /**
@@ -68,6 +69,7 @@ public class VirusScanValidationTest {
     @Test
     @Order(2)
     public void validateScanOfKnownInfectedFile() throws InterruptedException {
+        
         try {
             if (ONLY_TAG_INFECTED) {
                 // If Test 1 executed, then no need to retrigger

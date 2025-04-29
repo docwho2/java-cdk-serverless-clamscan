@@ -115,8 +115,10 @@ public class ClamavLambdaStack extends Stack {
                 .environment(Map.of("ONLY_TAG_INFECTED", ONLY_TAG_INFECTED.toString()))
                 .build();
 
+        // Obtain version so we can aliad it
         Version lambdaVersion = lambdaFunction.getCurrentVersion();
 
+        // Create live alias so we can roll back if necessary
         Alias lambdaAlias = Alias.Builder.create(this, "ClamavLambdaAlias")
                 .aliasName("live")
                 .version(lambdaVersion)
