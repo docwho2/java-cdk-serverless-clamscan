@@ -110,5 +110,7 @@ jobs:
         VALIDATION_BUCKET: ${{ vars.VALIDATION_BUCKET }}
         ONLY_TAG_INFECTED: ${{ vars.ONLY_TAG_INFECTED }}
       run: |
+        echo "Waiting 30 seconds to allow Lambda to finish deploying..."
+        sleep 30
         echo "Running Virus Scan Validation Tests..."
         mvn --batch-mode --no-transfer-progress exec:java
