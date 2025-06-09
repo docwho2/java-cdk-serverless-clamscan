@@ -70,8 +70,6 @@
                     <mainClass>cloud.cleo.clamav.test.VirusScanValidationTest</mainClass>
                 </configuration>
             </plugin>
-            
-            
         </plugins>
     </build>
 </project>
