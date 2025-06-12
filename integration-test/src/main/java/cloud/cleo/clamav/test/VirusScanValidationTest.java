@@ -13,7 +13,9 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.AfterAll;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
+import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.platform.engine.discovery.DiscoverySelectors;
 import org.junit.platform.launcher.Launcher;
 import org.junit.platform.launcher.LauncherDiscoveryRequest;
@@ -29,6 +31,7 @@ import org.junit.platform.launcher.listeners.SummaryGeneratingListener;
  *
  * @author sjensen
  */
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class VirusScanValidationTest {
 
     private static final String BUCKET_NAME = System.getenv("VALIDATION_BUCKET");
