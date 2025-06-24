@@ -10,7 +10,7 @@ echo "Verifying Java Version..."
 java -version
 
 echo "Installing latest Maven locally..."
-MAVEN_VERSION=3.9.6
+MAVEN_VERSION=3.9.10
 
 # Download and untar in your HOME directory
 curl -fsSL https://downloads.apache.org/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz -o maven.tar.gz
