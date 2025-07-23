@@ -23,6 +23,7 @@ import software.amazon.awscdk.services.lambda.DockerImageCode;
 import software.amazon.awscdk.services.lambda.DockerImageFunction;
 import software.amazon.awscdk.services.lambda.EcrImageCodeProps;
 import software.amazon.awscdk.services.lambda.Version;
+import software.amazon.awscdk.services.logs.LogGroup;
 import software.amazon.awscdk.services.logs.RetentionDays;
 import software.amazon.awscdk.services.s3.Bucket;
 import software.amazon.awscdk.services.s3.BucketPolicy;
@@ -37,7 +38,6 @@ import software.constructs.Construct;
  * @author sjensen
  */
 public class ClamavLambdaStack extends Stack {
-  
 
     public ClamavLambdaStack(final Construct scope, final String id, final StackProps props) {
         super(scope, id, props);
@@ -90,6 +90,13 @@ public class ClamavLambdaStack extends Stack {
                 .directory(".")
                 .build();
 
+        // Create custom log group first
+        LogGroup customLogGroup = LogGroup.Builder.create(this, LAMBDA_NAME + "LogGroup")
+                .logGroupName("/aws/lambda/" + LAMBDA_NAME)
+                .retention(RetentionDays.ONE_MONTH)
+                .removalPolicy(RemovalPolicy.DESTROY)
+                .build();
+
         // Create a Docker-based Lambda function using the built image.
         DockerImageFunction lambdaFunction = DockerImageFunction.Builder.create(this, LAMBDA_NAME)
                 .code(DockerImageCode.fromEcr(imageAsset.getRepository(),
@@ -110,14 +117,14 @@ public class ClamavLambdaStack extends Stack {
                 .timeout(Duration.minutes(10))
                 .functionName(LAMBDA_NAME)
                 .description("Scans S3 files based on ObjectCreate events")
-                .logRetention(RetentionDays.ONE_MONTH) // Don't let the logs hang around forever
+                .logGroup(customLogGroup)
                 // Ensure the Lambda also gets the ENV flag
                 .environment(Map.of("ONLY_TAG_INFECTED", ONLY_TAG_INFECTED.toString()))
                 .build();
 
         // Obtain version so we can alias it
         Version lambdaVersion = lambdaFunction.getCurrentVersion();
-        
+
         // Retain so we can rollback
         lambdaVersion.applyRemovalPolicy(RemovalPolicy.RETAIN);
 
@@ -153,7 +160,7 @@ public class ClamavLambdaStack extends Stack {
                 // Export in case someone wants to wire stuff up in another stack
                 .exportName("ClamavLambdaFunctionArn")
                 .build();
-        
+
     }
 
     /**
