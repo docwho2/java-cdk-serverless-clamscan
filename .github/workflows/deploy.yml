@@ -33,7 +33,7 @@ jobs:
       
     steps:
     - name: Checkout Code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
     
     # Required to build arm64 images on x86  
     - name: Set up QEMU
