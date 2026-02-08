@@ -3,6 +3,8 @@ FROM ubuntu:20.04 AS builder
 
 # Prevent interactive prompts.
 ENV DEBIAN_FRONTEND=noninteractive
+ARG CLAMAV_MIRROR=database.clamav.net
+ARG CLAMAV_MIRROR_FALLBACK=database.clamav.net
 
 RUN apt-get update -y && \
     apt-get install -y clamav clamav-freshclam p7zip-full
@@ -31,7 +33,9 @@ RUN mkdir -p /tmp/clamav_libs && \
 # Create a directory for the definitions and run freshclam to update them.
 RUN mkdir -p /tmp/clamav_defs && \
     chmod -R 777 /tmp/clamav_defs && \
-    freshclam --stdout --datadir=/tmp/clamav_defs && \
+    printf "DatabaseMirror %s\nDatabaseMirror %s\nMaxAttempts 5\nConnectTimeout 30\nReceiveTimeout 60\n" \
+      "$CLAMAV_MIRROR" "$CLAMAV_MIRROR_FALLBACK" > /tmp/freshclam.conf && \
+    freshclam --stdout --config-file=/tmp/freshclam.conf --datadir=/tmp/clamav_defs && \
     cp -R /tmp/clamav_defs /tmp/clamav_defs_output
 
 # Final stage: use the AWS Lambda Java 21 base image.
@@ -54,4 +58,3 @@ COPY lambda-jar/lambda-1.0.jar ${LAMBDA_TASK_ROOT}/lib/
 
 # Specify the Lambda handler (in the format Package.Class::method).
 CMD [ "cloud.cleo.clamav.lambda.ScanningLambda::handleRequest" ]
-
