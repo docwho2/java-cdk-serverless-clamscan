@@ -65,6 +65,19 @@ The inspiration for this project came from reviewing the [AWS Labs cdk-serverles
 
 ---
 
+## 🗄️ ClamAV Definition Mirror Overrides
+
+If GitHub-hosted builds begin throttling ClamAV definition downloads, you can point `freshclam` at your
+own mirror (for example, a private S3 or HTTP mirror) by setting these environment variables before
+`cdk synth` or `cdk deploy`:
+
+- `CLAMAV_MIRROR` (primary mirror hostname or URL)
+- `CLAMAV_MIRROR_FALLBACK` (secondary mirror hostname or URL)
+
+These values are passed as Docker build args so the image build uses your mirrors when running `freshclam`.
+
+---
+
 ## 🚀 CLI Build & Deploy (Mac / ARM Platform)
 
 If you have [brew](https://brew.sh) installed (highly recommended) then:
