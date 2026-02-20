@@ -13,6 +13,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -70,8 +71,8 @@ public class ScanningLambda implements RequestHandler<S3EventNotification, Void>
                 setScanTagStatus(bucket, key, ScanStatus.SCANNING); // Don't wait for Async response
             }
 
-            // Download the file to /tmp. Cleanup key if it has many / characters and yield filename only
-            Path localFilePath = Path.of("/tmp", new File(key).getName());
+            // Download the file to /tmp with a unique file name.
+            Path localFilePath = createTempFilePath(key);
             try {
                 log.info("Downloading file {} from bucket {} to {}", key, bucket, localFilePath);
                 GetObjectRequest getObjectRequest = GetObjectRequest.builder()
@@ -107,7 +108,17 @@ public class ScanningLambda implements RequestHandler<S3EventNotification, Void>
                 log.info("Remaining Millis before Lambda will timeout: {}", remainingMillis);
 
                 // Wait up till the amount of time left the Lambda has with 10 second buffer
-                boolean finished = process.waitFor(remainingMillis - 10000, TimeUnit.MILLISECONDS);
+                long waitMillis = getClamScanWaitMillis(remainingMillis);
+                if (waitMillis <= 0) {
+                    process.destroyForcibly();
+                    log.error("Not enough execution time left to safely run clamscan. Remaining millis: {}", remainingMillis);
+                    if (!ONLY_TAG_INFECTED) {
+                        setScanTagStatus(bucket, key, ScanStatus.ERROR).join();
+                    }
+                    return;
+                }
+
+                boolean finished = process.waitFor(waitMillis, TimeUnit.MILLISECONDS);
 
                 if (!finished) {
                     process.destroyForcibly();
@@ -134,6 +145,9 @@ public class ScanningLambda implements RequestHandler<S3EventNotification, Void>
                 log.info("Scan result for {}: {}", key, status);
             } catch (IOException | InterruptedException e) {
                 log.error("Error running clamscan: ", e);
+                if (e instanceof InterruptedException) {
+                    Thread.currentThread().interrupt();
+                }
                 return;
             } catch (CompletionException e) {
                 log.error("Transient S3 failure, triggering retry", e);
@@ -208,5 +222,21 @@ public class ScanningLambda implements RequestHandler<S3EventNotification, Void>
             log.error("Error updating object tags", e);
             return CompletableFuture.failedFuture(e);
         }
+    }
+
+    static long getClamScanWaitMillis(int remainingMillis) {
+        return Math.max(0, remainingMillis - 10000L);
+    }
+
+    static Path createTempFilePath(String key) {
+        String baseName = new File(key).getName();
+        String extension = "";
+        int extIndex = baseName.lastIndexOf('.');
+        if (extIndex > 0 && extIndex < baseName.length() - 1) {
+            extension = baseName.substring(extIndex);
+        }
+
+        String uniqueName = java.util.UUID.randomUUID() + extension;
+        return Paths.get("/tmp", uniqueName);
     }
 }
