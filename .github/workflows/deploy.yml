@@ -37,7 +37,7 @@ jobs:
     
     # Required to build arm64 images on x86  
     - name: Set up QEMU
-      uses: docker/setup-qemu-action@v3
+      uses: docker/setup-qemu-action@v4
 
     # Required to build arm64 images on x86
     - name: Set up Docker Buildx
