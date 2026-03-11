@@ -3,6 +3,7 @@ package cloud.cleo.clamav.cdk;
 import cloud.cleo.clamav.ScanStatus;
 import static cloud.cleo.clamav.ScanStatus.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import software.amazon.awscdk.App;
@@ -88,6 +89,7 @@ public class ClamavLambdaStack extends Stack {
         DockerImageAsset imageAsset = DockerImageAsset.Builder.create(this, "ClamavLambdaImage")
                 .platform(isCloudShell() ? Platform.LINUX_AMD64 : Platform.LINUX_ARM64)
                 .directory(".")
+                .buildArgs(getDockerBuildArgs())
                 .build();
 
         // Create custom log group first
@@ -218,6 +220,20 @@ public class ClamavLambdaStack extends Stack {
             return "true".equalsIgnoreCase(str.trim());
         }
         return defaultValue;
+    }
+
+    private Map<String, String> getDockerBuildArgs() {
+        Map<String, String> buildArgs = new HashMap<>();
+        addBuildArgIfPresent(buildArgs, "CLAMAV_MIRROR");
+        addBuildArgIfPresent(buildArgs, "CLAMAV_MIRROR_FALLBACK");
+        return buildArgs;
+    }
+
+    private void addBuildArgIfPresent(Map<String, String> buildArgs, String envVarName) {
+        String value = System.getenv(envVarName);
+        if (value != null && !value.isBlank()) {
+            buildArgs.put(envVarName, value);
+        }
     }
 
     /**
